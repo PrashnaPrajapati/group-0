@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Logo from "@/components/Logo";
@@ -17,12 +18,14 @@ export default function SignupPage() {
   const phoneRef = useRef(null);
   const emailRef = useRef(null);
   const passwordRef = useRef(null);
+  const confirmPasswordRef = useRef(null);
   const otherGenderRef = useRef(null);
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [gender, setGender] = useState(""); 
   const [otherGender, setOtherGender] = useState("");
   const [loading, setLoading] = useState(false);
@@ -32,10 +35,10 @@ export default function SignupPage() {
     const trimmed = fullName.trim();
     const regex = /^[A-Za-z]+([ '-][A-Za-z]+)+$/;
     if (!trimmed) {
-      setErrors({ fullName: "Full name is required." });
+      setErrors(prev => ({ ...prev, fullName: "Full name is required." }));
       return false;
     } else if (!regex.test(trimmed)) {
-      setErrors({ fullName: "Enter at least 2 words, letters only." });
+      setErrors(prev => ({ ...prev, fullName: "Enter at least 2 words, letters only." }));
       return false;
     }
     setErrors(prev => ({ ...prev, fullName: "" }));
@@ -43,57 +46,77 @@ export default function SignupPage() {
   };
 
   const validatePhone = () => {
-    const trimmed = phone.trim();
+    const trimmed = phone.replace(/\s+/g, ""); 
+
     if (!trimmed) {
-      setErrors({ phone: "Phone number is required." });
+      setErrors(prev => ({ ...prev, phone: "Phone number is required." }));
       return false;
-    } else if (!/^\d+$/.test(trimmed)) {
-      setErrors({ phone: "Phone number must contain digits only." });
-      return false;
-    } else if (trimmed.length !== 10) {
-      setErrors({ phone: "Phone number must be exactly 10 digits." });
+    } 
+
+    if (!/^\d{10}$/.test(trimmed)) {
+      setErrors(prev => ({ ...prev, phone: "Phone number must be exactly 10 digits." }));
       return false;
     }
+
     setErrors(prev => ({ ...prev, phone: "" }));
     return true;
   };
 
   const validateEmail = () => {
-    const trimmed = email.trim();
-    const regex = /^[A-Za-z0-9._-]{2,}@gmail\.com$/;
-    if (!trimmed) {
-      setErrors({ email: "Email is required." });
-      return false;
-    } else if (!regex.test(trimmed)) {
-      setErrors({ email: "Email must be valid and end with @gmail.com." });
-      return false;
-    }
-    setErrors(prev => ({ ...prev, email: "" }));
-    return true;
-  };
+  const trimmed = email.trim();
+  const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+
+  if (!trimmed) {
+    setErrors(prev => ({ ...prev, email: "Email is required." }));
+    return false;
+  } else if (!regex.test(trimmed)) {
+    setErrors(prev => ({ ...prev, email: "Please enter a valid email address." }));
+    return false;
+  }
+
+  setErrors(prev => ({ ...prev, email: "" }));
+  return true;
+};
+
 
   const validatePassword = () => {
     const trimmed = password.trim();
     const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
     if (!trimmed) {
-      setErrors({ password: "Password is required." });
+      setErrors(prev => ({ ...prev, password: "Password is required." }));
       return false;
     } else if (!regex.test(trimmed)) {
-      setErrors({
-        password: "Password must be 8+ characters and include uppercase, lowercase, and a number.",
-      });
+      setErrors(prev => ({ ...prev, password: "Password must be 8+ characters and include uppercase, lowercase, and a number." }));
       return false;
     }
     setErrors(prev => ({ ...prev, password: "" }));
     return true;
   };
 
+  const validateConfirmPassword = () => {
+  const trimmedPassword = password.trim();
+  const trimmedConfirm = confirmPassword.trim();
+
+  if (!trimmedConfirm) {
+    setErrors(prev => ({ ...prev, confirmPassword: "Please confirm your password." }));
+    return false;
+  } else if (trimmedConfirm !== trimmedPassword) {
+    setErrors(prev => ({ ...prev, confirmPassword: "Passwords do not match." }));
+    return false;
+  }
+
+  setErrors(prev => ({ ...prev, confirmPassword: "" }));
+  return true;
+};
+
+
   const validateGender = () => {
     if (!gender) {
-      setErrors({ gender: "Please select a gender." });
+      setErrors(prev => ({ ...prev, gender: "Please select a gender." }));
       return false;
     } else if (gender === "other" && !otherGender.trim()) {
-      setErrors({ otherGender: "Please specify your gender." });
+      setErrors(prev => ({ ...prev, otherGender: "Please specify your gender." }));
       return false;
     }
     setErrors(prev => ({ ...prev, gender: "", otherGender: "" }));
@@ -102,16 +125,17 @@ export default function SignupPage() {
 
   const handleSignup = async (e) => {
     e.preventDefault();
+    if (loading) return;
 
-    if (!validateFullName() || !validatePhone() || !validateEmail() || !validatePassword() || !validateGender()) {
+    if (!validateFullName() || !validatePhone() || !validateEmail() || !validatePassword() || !validateConfirmPassword() || !validateGender()) {
       return;
     }
 
     setLoading(true);
 
     const creatingToastId = toast.info("Creating Account...", {
-      position: "top-left",
-      autoClose: 5000,
+      position: "top-right",
+      autoClose: false,
       hideProgressBar: false,
       closeOnClick: false,
       pauseOnHover: false,
@@ -131,6 +155,7 @@ export default function SignupPage() {
           phone: phone.trim(),
           email: email.trim(),
           password: password.trim(),
+          confirmPassword: confirmPassword.trim(),
           gender: finalGender,
         }),
       });
@@ -140,7 +165,7 @@ export default function SignupPage() {
       if (!res.ok) {
         toast.dismiss(creatingToastId);
         toast.error(data.message || "Signup failed", {
-          position: "top-center",
+          position: "top-right",
           autoClose: 5000,
         });
         setLoading(false);
@@ -151,7 +176,7 @@ export default function SignupPage() {
       toast.update(creatingToastId, {
         render: "Account Created Successfully!",
         type: "success",
-        autoClose: 5000,
+        autoClose: 2000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -161,13 +186,13 @@ export default function SignupPage() {
       
       setTimeout(() => {
         router.push("/login");
-      }, 5000);
+      }, 2000);
 
     } catch (err) {
       console.error(err);
       toast.dismiss(creatingToastId);
       toast.error("Something went wrong. Please try again.", {
-        position: "top-center",
+        position: "top-right",
         autoClose: 5000,
       });
     } finally {
@@ -178,7 +203,16 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen flex bg-white">
       <ToastContainer 
-      position ="top-left"/>
+      position ="top-right"
+      autoClose={5000}
+      hideProgressBar={false}
+      newestOnTop={false} 
+      closeOnClick
+      rtl={false}
+      pauseOnFocusLoss
+      draggable
+      pauseOnHover
+      />
       {/* Left Image */}
       <div className="hidden md:block w-1/2">
         <img
@@ -216,24 +250,32 @@ export default function SignupPage() {
                 }
               }}
               error={errors.fullName}
+              disabled={loading}
             />
 
             {/* Phone */}
             <TextInput
-              ref={phoneRef}
-              placeholder="Enter your phone number"
-              label="Phone Number"
-              icon={Phone}
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  if (validatePhone()) emailRef.current?.focus();
-                }
-              }}
-              error={errors.phone}
-            />
+            ref={phoneRef}
+            placeholder="Enter your phone number"
+            label="Phone Number"
+            icon={Phone}
+            type="tel"
+            inputMode="numeric"
+            maxLength={10}
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                if (validatePhone()) emailRef.current?.focus();
+              }
+            }}
+            onKeyPress={(e) => {
+              if (!/[0-9]/.test(e.key)) e.preventDefault();
+            }}
+            error={errors.phone}
+            disabled={loading}
+          />
 
             {/* Email */}
             <TextInput
@@ -251,6 +293,7 @@ export default function SignupPage() {
                 }
               }}
               error={errors.email}
+              disabled={loading}
             />
 
             {/* Password */}
@@ -264,13 +307,33 @@ export default function SignupPage() {
                 if (e.key === "Enter") {
                   e.preventDefault();
                   if (validatePassword()) {
-                   
+                    confirmPasswordRef.current?.focus();
+                  }
+                }
+              }}
+
+              error={errors.password}
+              disabled={loading}
+            />
+
+            {/* Confirm Password */}
+            <PasswordInput
+              ref={confirmPasswordRef}
+              placeholder="Confirm your password"
+              label="Confirm Password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  if (validateConfirmPassword()) {
                     const firstGenderInput = document.querySelector('input[name="gender"]');
                     firstGenderInput?.focus();
                   }
                 }
               }}
-              error={errors.password}
+              error={errors.confirmPassword}
+              disabled={loading}
             />
 
             {/* Gender */}
@@ -286,6 +349,7 @@ export default function SignupPage() {
                       className="accent-pink-500"
                       checked={gender === g}
                       onChange={(e) => setGender(e.target.value)}
+                      disabled={loading}
                     />
                     {g.charAt(0).toUpperCase() + g.slice(1)}
                   </label>
@@ -301,20 +365,21 @@ export default function SignupPage() {
                   value={otherGender}
                   onChange={(e) => setOtherGender(e.target.value)}
                   error={errors.otherGender}
+                  disabled={loading}
                 />
               )}
             </div>
 
-            <Button type="submit" disabled={loading}>
-              {loading ? "Please wait..." : "Create Account"}
+            <Button type="submit" fullWidth disabled={loading}>
+              {loading ? "Creating Account..." : "Create Account"}
             </Button>
 
             <div className="text-center text-sm mt-4 text-gray-500">
-              Already have an account?{" "}
-              <a href="/login" className="text-pink-500 font-medium">
-                Login
-              </a>
-            </div>
+            Already have an account?{" "}
+            <Link href="/login" className="text-pink-500 font-medium">
+              Login
+            </Link>
+          </div>
 
           </form>
         </div>

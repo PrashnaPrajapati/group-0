@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function ResetPasswordPage() {
   const [newPassword, setNewPassword] = useState("");
@@ -9,6 +10,9 @@ export default function ResetPasswordPage() {
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
@@ -42,45 +46,67 @@ export default function ResetPasswordPage() {
 
       if (res.ok) {
         setMessage(data.message);
-        setTimeout(() => router.push("/login"), 3000); 
+        setTimeout(() => router.push("/login"), 3000);
       } else {
         setError(data.message || "Something went wrong.");
       }
-    } catch (err) {
+    } catch {
       setError("Failed to reset password. Try again.");
     }
 
     setLoading(false);
   };
 
-  if (!token) return <p className="text-center mt-20">Invalid password reset link.</p>;
+  if (!token)
+    return <p className="text-center mt-20 text-red-600">Invalid password reset link.</p>;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-pink-50 p-6">
+    <div className="min-h-screen flex items-center justify-center bg-pink-50 px-8 py-12">
       <div className="max-w-md w-full bg-white rounded-lg shadow p-8">
-        <h2 className="text-2xl font-bold mb-4 text-center text-pink-600">Set New Password</h2>
+        <h2 className="text-3xl font-bold text-center text-gray-900 mb-2">Set New Password</h2>
+
         <form onSubmit={handleReset} className="space-y-4">
-          <input
-            type="password"
-            placeholder="New Password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            className="w-full p-3 border border-gray-300 rounded focus:outline-pink-500"
-          />
-          <input
-            type="password"
-            placeholder="Confirm New Password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full p-3 border border-gray-300 rounded focus:outline-pink-500"
-          />
+          {/* New Password */}
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="New Password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="w-full p-3 border border-gray-300 rounded focus:outline-pink-500 text-gray-900 placeholder-gray-400"
+            />
+            <span
+              className="absolute right-3 top-3 cursor-pointer"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? <EyeOff /> : <Eye />}
+            </span>
+          </div>
+
+          {/* Confirm Password */}
+          <div className="relative">
+            <input
+              type={showConfirm ? "text" : "password"}
+              placeholder="Confirm New Password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full p-3 border border-gray-300 rounded focus:outline-pink-500 text-gray-900 placeholder-gray-400"
+            />
+            <span
+              className="absolute right-3 top-3 cursor-pointer"
+              onClick={() => setShowConfirm(!showConfirm)}
+            >
+              {showConfirm ? <EyeOff /> : <Eye />}
+            </span>
+          </div>
+
           {error && <p className="text-red-600 text-sm">{error}</p>}
           {message && <p className="text-green-600 text-sm">{message}</p>}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-pink-600 text-white font-semibold py-3 rounded hover:bg-pink-700 transition"
+            className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white font-semibold py-3 rounded hover:bg-pink-700 transition"
           >
             {loading ? "Resetting..." : "Reset Password"}
           </button>

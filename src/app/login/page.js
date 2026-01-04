@@ -24,36 +24,51 @@ export default function LoginPage() {
 
 
   const validateEmail = () => {
-    const trimmed = email.trim();
-    const regex = /^[A-Za-z0-9._-]{2,}@[^\s@]+\.com$/;
+  const trimmed = email.trim(); // already trimming ✅
+  const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
-    if (!trimmed) {
-      setErrors({ email: "Email is required." });
-      return false;
-    }
-    if (!regex.test(trimmed)) {
-      setErrors({ email: "Email must be valid and end with .com" });
-      return false;
-    }
+  if (!trimmed) {
+    setErrors({ email: "Email is required." });
+    emailRef.current?.focus();
+    return false;
+  }
+  if (!regex.test(trimmed)) {
+    setErrors({ email: "Please enter a valid email address." });
+    emailRef.current?.focus();
+    return false;
+  }
 
-    setErrors((prev) => ({ ...prev, email: "" }));
-    return true;
-  };
+  setErrors((prev) => ({ ...prev, email: "" }));
+  return true;
+};
 
   const validatePassword = () => {
-    if (!password.trim()) {
-      setErrors({ password: "Password is required." });
-      return false;
-    }
+  const trimmed = password.trim(); // trim here too
+  const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
 
-    setErrors((prev) => ({ ...prev, password: "" }));
-    return true;
-  };
+  if (!trimmed) {
+    setErrors({ password: "Password is required." });
+    passwordRef.current?.focus();
+    return false;
+  }
+  if (!regex.test(trimmed)) {
+    setErrors({
+      password: "Password must be 8+ chars with uppercase, lowercase, and a number.",
+    });
+    passwordRef.current?.focus();
+    return false;
+  }
+
+  setErrors((prev) => ({ ...prev, password: "" }));
+  return true;
+};
 
   const handleLogin = async (e) => {
   e.preventDefault();
 
-  if (!validateEmail() || !validatePassword()) return;
+  if (!validateEmail()) return;   
+  if (!validatePassword()) return; 
+
 
   setLoading(true);
 
@@ -88,12 +103,21 @@ export default function LoginPage() {
   return;
 }
     if (res.ok) {
-  localStorage.setItem("token", data.token); 
+  localStorage.setItem("token", data.token);
+  localStorage.setItem("role", data.user.role);
+
   toast.success(`Welcome, ${data.user.fullName}`, {
     position: "top-center",
-    autoClose: 3000,
+    autoClose: 2000,
   });
-  setTimeout(() => router.push("/dashboard"), 3000);
+
+  setTimeout(() => {
+    if (data.user.role === "admin") {
+      router.replace("/admin/dashboard");
+    } else {
+      router.replace("/dashboard");
+    }
+  }, 2000);
 }
 
   } catch (err) {
@@ -149,6 +173,7 @@ export default function LoginPage() {
                 }
               }}
               error={errors.email}
+              disabled={loading}
             />
 
             {/* Password */}
@@ -160,14 +185,19 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               onBlur={validatePassword}
               error={errors.password}
+              disabled={loading}
             />
 
             <p className="text-right text-sm text-pink-500 hover:underline">
               <a href="/forgot-password">Forgot Password?</a>
             </p>
 
-            <Button disabled={loading}>
-              Login
+            <Button
+              type="submit"
+              fullWidth
+              disabled={loading}
+            >
+              {loading ? "Logging in..." : "Login"}
             </Button>
           </form>
 
