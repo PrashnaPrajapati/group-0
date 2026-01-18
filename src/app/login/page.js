@@ -24,16 +24,31 @@ export default function LoginPage() {
 
 
   const validateEmail = () => {
-  const trimmed = email.trim(); // already trimming ✅
-  const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  const trimmed = email.trim();
 
+  const allowedProviders = [
+  "gmail","yahoo","hotmail","outlook","icloud",
+  "aol","protonmail","zoho","gmx","mail"
+];
+const allowedTLDs = [
+  "com","edu","io","org","net","co","gov","in","ai","app","dev"
+];
+
+const regex = new RegExp(
+  `^[a-zA-Z0-9._%+-]+@(${allowedProviders.join("|")})\\.(${allowedTLDs.join("|")})$`,
+  "i"
+);
   if (!trimmed) {
-    setErrors({ email: "Email is required." });
+    setErrors((prev) => ({ ...prev, email: "Email is required." }));
     emailRef.current?.focus();
     return false;
   }
+
   if (!regex.test(trimmed)) {
-    setErrors({ email: "Please enter a valid email address." });
+    setErrors((prev) => ({
+      ...prev,
+      email: "Please enter a valid email address",
+    }));
     emailRef.current?.focus();
     return false;
   }
@@ -43,7 +58,7 @@ export default function LoginPage() {
 };
 
   const validatePassword = () => {
-  const trimmed = password.trim(); // trim here too
+  const trimmed = password.trim(); 
   const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
 
   if (!trimmed) {

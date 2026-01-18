@@ -1,122 +1,151 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
-export default function Page() {
+export default function AdminServicesPage() {
   const [services, setServices] = useState([]);
-  const [name, setName] = useState("");
-  const [price, setPrice] = useState("");
-  const [duration, setDuration] = useState("");
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  // Fetch services
+  const fetchServices = async () => {
+    try {
+      const res = await fetch("http://localhost:5001/admin/services", {
+        headers: {
+          Authorization: "Bearer " + localStorage.getItem("token"),
+        },
+      });
+
+      const data = await res.json();
+      setServices(data);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching services", error);
+    }
+  };
 
   useEffect(() => {
     fetchServices();
   }, []);
 
-  const fetchServices = async () => {
-    const token = localStorage.getItem("token");
+  // Replace deleteService with toggle status
+const toggleServiceStatus = async (service) => {
+  const action =
+    service.status === "active" ? "inactive" : "active";
 
-    const res = await fetch("http://localhost:5001/admin/services", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+  if (
+    !confirm(
+      `Are you sure you want to mark this service as ${action}?`
+    )
+  )
+    return;
 
-    const data = await res.json();
-    setServices(data);
-  };
+  try {
+    await fetch(
+      `http://localhost:5001/admin/services/${service.id}/${action}`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: "Bearer " + localStorage.getItem("token"),
+        },
+      }
+    );
 
-  const addService = async () => {
-    const token = localStorage.getItem("token");
+    fetchServices(); // refresh list
+  } catch (error) {
+    console.error("Status update failed", error);
+  }
+};
 
-    await fetch("http://localhost:5001/admin/services", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ name, price, duration }),
-    });
 
-    setName("");
-    setPrice("");
-    setDuration("");
-    fetchServices();
-  };
-
-  const deleteService = async (id) => {
-    const token = localStorage.getItem("token");
-
-    await fetch(`http://localhost:5001/admin/services/${id}`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    fetchServices();
-  };
+  if (loading) {
+    return (
+      <div className="p-10 text-center text-gray-500">
+        Loading services...
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-pink-50 p-8">
-      <h1 className="text-3xl font-bold mb-6 text-pink-600">
-        Manage Services
-      </h1>
-
-      {/* Add Service */}
-      <div className="bg-white p-6 rounded-xl shadow mb-8">
-        <h2 className="font-semibold mb-4">Add New Service</h2>
-
-        <div className="grid md:grid-cols-3 gap-4">
-          <input
-            className="border p-2 rounded"
-            placeholder="Service Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <input
-            className="border p-2 rounded"
-            placeholder="Price"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-          />
-          <input
-            className="border p-2 rounded"
-            placeholder="Duration (mins)"
-            value={duration}
-            onChange={(e) => setDuration(e.target.value)}
-          />
-        </div>
-
+    <div className="p-8 bg-[#fff7fa] min-h-screen">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-pink-500">
+          Admin – Services
+        </h1>
         <button
-          onClick={addService}
-          className="mt-4 bg-pink-600 text-white px-6 py-2 rounded-lg hover:bg-pink-700"
+          onClick={() => router.push("/admin/services/add")}
+          className="bg-pink-500 text-white px-5 py-2 rounded-full bg-gradient-to-r from-pink-500 to-purple-500"
         >
-          Add Service
+          + Add Service
         </button>
       </div>
 
-      {/* Services List */}
-      <div className="bg-white rounded-xl shadow">
-        {services.map((s) => (
-          <div
-            key={s.id}
-            className="flex justify-between items-center p-4 border-b"
-          >
-            <div>
-              <p className="font-semibold">{s.name}</p>
-              <p className="text-sm text-gray-500">
-                ₹{s.price} • {s.duration} mins
-              </p>
-            </div>
+      {/* Table */}
+      <div className="bg-white rounded-xl shadow-sm border overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-pink-50 text-gray-700">
+            <tr>
+              <th className="p-4 text-left">ID</th>
+              <th className="p-4 text-left">Name</th>
+              <th className="p-4 text-left">Price</th>
+              <th className="p-4 text-left">Duration</th>
+              <th className="p-4 text-left">Status</th>
+              <th className="p-4 text-center">Actions</th>
+            </tr>
+          </thead>
 
-            <button
-              onClick={() => deleteService(s.id)}
-              className="text-red-500 hover:underline"
-            >
-              Delete
-            </button>
-          </div>
-        ))}
+          <tbody>
+            {services.length === 0 ? (
+              <tr>
+                <td colSpan="6" className="p-6 text-center text-gray-500">
+                  No services found
+                </td>
+              </tr>
+            ) : (
+              services.map((service) => (
+                <tr key={service.id} className="border-t">
+                  <td className="p-4 text-gray-900 font-medium">{service.id}</td>
+                  <td className="p-4 text-gray-900 font-medium">{service.name}</td>
+                  <td className="p-4 text-gray-900 font-medium">Rs. {service.price}</td>
+                  <td className="p-4 text-gray-900 font-medium">{service.duration}</td>
+                  <td className="p-4 text-gray-900 font-medium">
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs ${
+                        service.status === "active"
+                          ? "bg-green-100 text-green-600"
+                          : "bg-gray-200 text-gray-500"
+                      }`}
+                    >
+                      {service.status}
+                    </span>
+                  </td>
+                  <td className="p-4 text-center space-x-2">
+                    <button
+                      onClick={() =>
+                        router.push(`/admin/services/edit/${service.id}`)
+                      }
+                      className="px-3 py-1 rounded bg-blue-100 text-blue-600 hover:bg-blue-200"
+                    >
+                      Edit
+                    </button>
+                    <button
+                    onClick={() => toggleServiceStatus(service)}
+                    className={`px-3 py-1 rounded ${
+                      service.status === "active"
+                        ? "bg-red-100 text-red-600 hover:bg-red-200"
+                        : "bg-green-100 text-green-600 hover:bg-green-200"
+                    }`}
+                  >
+                    {service.status === "active" ? "Disable" : "Enable"}
+                  </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );

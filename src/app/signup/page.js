@@ -64,17 +64,43 @@ export default function SignupPage() {
 
   const validateEmail = () => {
   const trimmed = email.trim();
-  const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
+  // Allowed email providers
+  const allowedProviders = [
+    "gmail", "yahoo", "hotmail", "outlook", "icloud",
+    "aol", "protonmail", "zoho", "gmx", "mail"
+  ];
 
+  // Allowed top-level domains
+  const allowedTLDs = [
+    "com", "edu", "io", "org", "net", "co", "gov",
+    "in", "ai", "app", "dev"
+  ];
+
+  // Regex: local part + @ + allowed provider + . + allowed TLD
+  const regex = new RegExp(
+    `^[a-zA-Z0-9._%+-]+@(${allowedProviders.join("|")})\\.(${allowedTLDs.join("|")})$`,
+    "i" // case-insensitive
+  );
+
+  // Check if email is empty
   if (!trimmed) {
     setErrors(prev => ({ ...prev, email: "Email is required." }));
-    return false;
-  } else if (!regex.test(trimmed)) {
-    setErrors(prev => ({ ...prev, email: "Please enter a valid email address." }));
+    emailRef.current?.focus();
     return false;
   }
 
+  // Check if email matches allowed providers/TLDs
+  if (!regex.test(trimmed)) {
+    setErrors(prev => ({
+      ...prev,
+      email: "Please enter a valid email address"
+    }));
+    emailRef.current?.focus();
+    return false;
+  }
+
+  // Clear errors if valid
   setErrors(prev => ({ ...prev, email: "" }));
   return true;
 };

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import AdminDashboardUI from "../../../components/AdminDashboardUI"; // <-- import your component
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -10,19 +11,19 @@ export default function AdminDashboard() {
     const role = localStorage.getItem("role");
 
     if (!token) {
-      router.replace("/login");
+      router.replace("/login"); // redirect to login if not logged in
       return;
     }
 
     if (role !== "admin") {
-      router.replace("/dashboard");
+      router.replace("/dashboard"); // redirect non-admin users
       return;
     }
   }, [router]);
 
   return (
     <div>
-      <h1>Admin Dashboard</h1>
+      <AdminDashboardUI />  {/* <-- your component goes here */}
     </div>
   );
 }
