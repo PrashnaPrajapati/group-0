@@ -15,7 +15,7 @@ export default function AdminDashboardUI({ children }) {
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#f5f5f5" }}>
-      {/* Sidebar */}
+
       <aside
         style={{
           width: 220,
@@ -44,7 +44,7 @@ export default function AdminDashboardUI({ children }) {
         ))}
       </aside>
 
-      {/* Page Content */}
+
       <main style={{ flex: 1, padding: 30 }}>{children}</main>
     </div>
   );

@@ -1,10 +1,10 @@
 import Link from "next/link";
 export default function Footer() {
   return (
-    <footer className="bg-[#fff0f6] py-10 text-sm text-gray-600">
+    <footer className="bg-[#fff7fa] py-10 text-sm text-gray-600">
       <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-4 gap-8">
         <div>
-          <h4 className="text-pink-500 font-semibold mb-2">
+          <h4 className="text-lg font-bold bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent  mb-2">
             Singar Glow
           </h4>
           <p>Your trusted partner in beauty & wellness</p>
@@ -43,7 +43,7 @@ export default function Footer() {
 
         <div>
           <h4 className="font-semibold mb-2">Contact</h4>
-          <p>Email: info@singarglow.com</p>
+          <p>Email: singarglow@.com</p>
           <p>Phone: 9876543210</p>
           <p>Nepal</p>
         </div>

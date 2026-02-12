@@ -229,7 +229,7 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen flex bg-white">
       <ToastContainer 
-      position ="top-right"
+      position ="top-center"
       autoClose={5000}
       hideProgressBar={false}
       newestOnTop={false} 

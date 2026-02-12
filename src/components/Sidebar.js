@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
 
 const menu = [
   { name: "Dashboard", href: "/dashboard" },
   { name: "Services", href: "/services" },
-  { name: "Bookings", href: "/bookings" }, // You can change this to /bookings or whatever route you want
+  { name: "Bookings", href: "/bookings" },
   { name: "Chat", href: "/chat" },
   { name: "Reviews", href: "/reviews" },
   { name: "Payments", href: "/payments" },
@@ -13,24 +15,72 @@ const menu = [
 ];
 
 export default function Sidebar() {
-  return (
-    <aside className="w-64 bg-[#f1e9f7] p-8 hidden md:flex flex-col gap-10">
-      <h2 className="text-pink-500 font-bold text-xl mb-10">
-        Singar Glow
-      </h2>
+  const pathname = usePathname();
+  const [isOpen, setIsOpen] = useState(false);
 
-      <ul className="space-y-6 text-gray-700 font-medium">
-        {menu.map((item) => (
-          <li key={item.name}>
-            <Link
-              href={item.href}
-              className="block hover:text-pink-500 transition"
-            >
-              {item.name}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </aside>
+  return (
+    <>
+      <button
+        className="fixed top-4 left-4 z-50 p-2 bg-pink-500 text-white rounded md:hidden"
+        onClick={() => setIsOpen(true)}
+      >
+        ☰
+      </button>
+
+      <aside
+        className={`
+          fixed inset-y-0 left-0 z-40 w-64 bg-white rounded-r-xl shadow-lg
+          transform transition-transform duration-300
+          ${isOpen ? "translate-x-0" : "-translate-x-full"}
+          md:translate-x-0 md:fixed md:flex md:flex-col md:h-screen md:p-6
+        `}
+      >
+        <button
+          className="self-end mb-4 md:hidden text-gray-500 text-lg"
+          onClick={() => setIsOpen(false)}
+        >
+          ✕
+        </button>
+
+        <div className="mb-10 text-center">
+          <h2 className="text-2xl font-bold text-pink-500">Singar Glow</h2>
+        </div>
+
+        <ul className="flex flex-col gap-2">
+          {menu.map((item) => {
+            const isActive = pathname === item.href;
+
+            return (
+              <li key={item.name}>
+                <Link
+                  href={item.href}
+                  className={`block px-4 py-3 rounded-lg font-medium transition-all
+                    ${
+                      isActive
+                        ? "bg-pink-50 border-l-4 border-pink-500 text-pink-600 shadow-sm"
+                        : "text-gray-700 hover:bg-pink-50 hover:text-pink-500"
+                    }
+                  `}
+                  onClick={() => setIsOpen(false)}
+                >
+                  {item.name}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+
+        <div className="mt-auto text-center text-gray-400 text-sm">
+          &copy; 2026 Singar Glow
+        </div>
+      </aside>
+
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black opacity-25 md:hidden"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+    </>
   );
 }

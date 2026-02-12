@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Button from "@/components/Button";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -63,13 +64,9 @@ export default function ForgotPasswordPage() {
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white font-semibold py-3 rounded hover:bg-pink-700 transition"
-          >
+          <Button type="submit" fullWidth disabled={loading}>
             {loading ? "Sending..." : "Send Reset Link"}
-          </button>
+          </Button>
         </form>
       </div>
     </div>
