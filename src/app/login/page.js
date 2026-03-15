@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Logo from "@/components/Logo";
 import TextInput from "@/components/TextInput";
@@ -21,8 +21,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-
-
+ 
   const validateEmail = () => {
   const trimmed = email.trim();
 
@@ -102,8 +101,7 @@ const regex = new RegExp(
     if (!res.ok) {
 
   toast.error(data.message || "Login failed", {
-    position: "top-center",
-    autoClose: 5000,
+    position: "top-center", 
   });
 
   if (data.message === "User not found") {
@@ -122,8 +120,7 @@ const regex = new RegExp(
   localStorage.setItem("role", data.user.role);
 
   toast.success(`Welcome, ${data.user.fullName}`, {
-    position: "top-center",
-    autoClose: 2000,
+    position: "top-center", 
   });
 
   setTimeout(() => {
@@ -132,13 +129,12 @@ const regex = new RegExp(
     } else {
       router.replace("/dashboard");
     }
-  }, 2000);
+  },1000);
 }
 
   } catch (err) {
     toast.error("Server error. Please try again.", {
-      position: "top-center",
-      autoClose: 5000,
+      position: "top-center", 
     });
   } finally {
     setLoading(false);

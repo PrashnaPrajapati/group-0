@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 export default function EditServicePage() {
   const router = useRouter();
@@ -13,30 +15,34 @@ export default function EditServicePage() {
     description: "",
     price: "",
     duration: "",
+    gender: "",
+    category: "",
   });
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const [image, setImage] = useState(null); // New image file
+  const [imagePreview, setImagePreview] = useState(""); // Preview URL
 
   // Fetch service by ID
   useEffect(() => {
     const fetchService = async () => {
       try {
-        const res = await fetch(
-          `http://localhost:5001/admin/services`,
-          {
-            headers: {
-              Authorization: "Bearer " + localStorage.getItem("token"),
-            },
-          }
-        );
+        const res = await fetch(`http://localhost:5001/admin/services`, {
+          headers: {
+            Authorization: "Bearer " + localStorage.getItem("token"),
+          },
+        });
 
         const data = await res.json();
         const service = data.find((s) => s.id == id);
 
         if (!service) {
           setError("Service not found");
+          setLoading(false);
           return;
         }
 
@@ -45,7 +51,13 @@ export default function EditServicePage() {
           description: service.description || "",
           price: service.price,
           duration: service.duration,
+          gender: service.gender || "",
+          category: service.category || "",
         });
+
+        if (service.image) {
+          setImagePreview(`http://localhost:5001${service.image}`);
+        }
 
         setLoading(false);
       } catch (err) {
@@ -64,30 +76,36 @@ export default function EditServicePage() {
     });
   };
 
-  // Update service
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-
-    if (!form.name || !form.price || !form.duration) {
-      setError("Required fields are missing");
-      return;
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    setImage(file);
+    if (file) {
+      setImagePreview(URL.createObjectURL(file));
     }
+  };
 
+  // Actual update logic
+  const updateService = async () => {
     setSaving(true);
 
     try {
-      const res = await fetch(
-        `http://localhost:5001/admin/services/${id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer " + localStorage.getItem("token"),
-          },
-          body: JSON.stringify(form),
-        }
-      );
+      const formData = new FormData();
+      formData.append("name", form.name);
+      formData.append("description", form.description);
+      formData.append("price", form.price);
+      formData.append("duration", form.duration);
+      formData.append("gender", form.gender);
+      formData.append("category", form.category);
+
+      if (image) formData.append("image", image);
+
+      const res = await fetch(`http://localhost:5001/admin/services/${id}`, {
+        method: "PUT",
+        headers: {
+          Authorization: "Bearer " + localStorage.getItem("token"),
+        },
+        body: formData,
+      });
 
       const data = await res.json();
 
@@ -97,68 +115,113 @@ export default function EditServicePage() {
         return;
       }
 
-      router.push("/admin/services");
+      setSuccess("Service updated successfully ✅");
+      setSaving(false);
+
+      setTimeout(() => {
+        router.push("/admin/services");
+      }, 2000);
     } catch (err) {
       setError("Something went wrong");
       setSaving(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="p-10 text-center text-gray-500">
-        Loading service...
-      </div>
+  // Show confirmation before updating
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+
+    if (!form.name || !form.price || !form.duration) {
+      setError("Required fields are missing");
+      return;
+    }
+
+    toast.info(
+      <div className="flex flex-col gap-2">
+        <span>Are you sure you want to update this service?</span>
+        <div className="flex gap-2 justify-end mt-2">
+          <button
+            onClick={() => toast.dismiss()}
+            className="px-3 py-1 border rounded text-gray-700"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              toast.dismiss();
+              updateService();
+            }}
+            className="px-3 py-1 bg-pink-500 text-white rounded"
+          >
+            Yes, Update
+          </button>
+        </div>
+      </div>,
+      {
+        position: "top-center",
+        autoClose: false,
+        closeOnClick: false,
+        closeButton: false,
+      }
     );
+  };
+
+  if (loading) {
+    return <div className="p-10 text-center text-gray-500">Loading service...</div>;
   }
 
   return (
-    <div className="min-h-screen bg-[#fff7fa] flex justify-center items-center p-6">
+    <div className="min-h-screen bg-[#fff7fa] flex justify-center items-start p-6 pt-10">
+      {/* Back button */}
+      <div className="mr-20 flex flex-col justify-start">
+        <button
+          onClick={() => router.back()}
+          className="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
+        >
+          ← Back
+        </button>
+      </div>
+
+      {/* Form container */}
       <div className="bg-white w-full max-w-lg rounded-xl shadow-sm border p-8">
-        <h1 className="text-2xl font-bold text-pink-500 mb-6">
+        <h1 className="text-2xl font-bold text-pink-500 mb-6 text-center">
           Edit Service
         </h1>
 
-        {error && (
-          <div className="bg-red-100 text-red-600 p-3 rounded mb-4 text-sm">
-            {error}
-          </div>
-        )}
+        {/* Error / Success messages */}
+        {error && <div className="bg-red-100 text-red-600 p-3 rounded mb-4 text-sm">{error}</div>}
+        {success && <div className="bg-green-100 text-green-600 p-3 rounded mb-4 text-sm">{success}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Name */}
           <div>
-            <label className="block text-sm font-medium text-gray-900 mb-1">
-              Service Name *
-            </label>
+            <label className="block text-sm font-medium text-gray-900 mb-1">Service Name *</label>
             <input
               type="text"
               name="name"
               value={form.name}
               onChange={handleChange}
-              className="w-full border-2 border-gray-300 text-gray-900 rounded-lg px-4 py-2 "
+              className="w-full border-2 border-gray-300 text-gray-900 rounded-lg px-4 py-2"
             />
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-900 mb-1">
-              Description
-            </label>
+            <label className="block text-sm font-medium text-gray-900 mb-1">Description</label>
             <textarea
               name="description"
               value={form.description}
               onChange={handleChange}
               rows="3"
-              className="w-full border-2 border-gray-300 text-gray-900 rounded-lg px-4 py-2 "
+              className="w-full border-2 border-gray-300 text-gray-900 rounded-lg px-4 py-2"
             />
           </div>
 
           {/* Price */}
           <div>
-            <label className="block text-sm font-medium text-gray-900 mb-1">
-              Price (Rs.) *
-            </label>
+            <label className="block text-sm font-medium text-gray-900 mb-1">Price (Rs.) *</label>
             <input
               type="number"
               name="price"
@@ -170,16 +233,79 @@ export default function EditServicePage() {
 
           {/* Duration */}
           <div>
-            <label className="block text-sm font-medium text-gray-900 mb-1">
-              Duration *
-            </label>
+            <label className="block text-sm font-medium text-gray-900 mb-1">Duration *</label>
             <input
               type="text"
               name="duration"
               value={form.duration}
               onChange={handleChange}
-              className="w-full border-2 border-gray-300 text-gray-900 rounded-lg px-4 py-2 "
+              className="w-full border-2 border-gray-300 text-gray-900 rounded-lg px-4 py-2"
             />
+          </div>
+
+          {/* Gender */}
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-1">Gender *</label>
+            <select
+              name="gender"
+              value={form.gender}
+              onChange={handleChange}
+              className="w-full border-2 border-gray-300 text-gray-900 rounded-lg px-4 py-2"
+            >
+              <option value="">Select Gender</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+            </select>
+          </div>
+
+          {/* Category */}
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-1">Category *</label>
+            <select
+              name="category"
+              value={form.category}
+              onChange={handleChange}
+              className="w-full border-2 border-gray-300 text-gray-900 rounded-lg px-4 py-2"
+            >
+              <option value="">Select Category</option>
+              <option value="hair">Hair</option>
+              <option value="skin care">Skin Care</option>
+              <option value="nails">Nails</option>
+              <option value="makeup">Makeup</option>
+              <option value="massage">Massage</option>
+              <option value="body grooming">Body Grooming</option>
+              <option value="spa">Spa</option>
+            </select>
+          </div>
+
+          {/* Image Upload */}
+          <div>
+            <label className="block text-sm text-gray-700 mb-1">Service Image</label>
+
+            <div className="flex items-center space-x-4">
+              <input
+                type="file"
+                accept="image/*"
+                id="serviceImage"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+              <label
+                htmlFor="serviceImage"
+                className="cursor-pointer px-4 py-2 bg-pink-400 text-white rounded hover:bg-pink-600"
+              >
+                {image ? "Change Image" : "Choose Image"}
+              </label>
+              {image && <span className="text-gray-700">{image.name}</span>}
+            </div>
+
+            {imagePreview && (
+              <img
+                src={imagePreview}
+                alt="Preview"
+                className="mt-2 w-32 h-32 object-cover rounded"
+              />
+            )}
           </div>
 
           {/* Buttons */}
@@ -195,13 +321,15 @@ export default function EditServicePage() {
             <button
               type="submit"
               disabled={saving}
-              className="px-6 py-2 rounded-full  bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:bg-pink-600 disabled:opacity-50"
+              className="px-6 py-2 rounded-full bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:bg-pink-600 disabled:opacity-50"
             >
               {saving ? "Updating..." : "Update Service"}
             </button>
           </div>
         </form>
       </div>
+
+      <ToastContainer />
     </div>
   );
-}
+} 

@@ -3,24 +3,22 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ToastContainer, toast } from "react-toastify";
+import AdminSidebar from "@/components/AdminSidebar";
 import "react-toastify/dist/ReactToastify.css";
 
 export default function AdminServicesPage() {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const servicesPerPage = 10;
   const router = useRouter();
-
-  // Fetch services
+ 
   const fetchServices = async () => {
     try {
-      const token = localStorage.getItem("token");
-
+      const token = localStorage.getItem("token"); 
       const res = await fetch("http://localhost:5001/admin/services", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
+        headers: { Authorization: `Bearer ${token}` },
+      }); 
       const data = await res.json();
       setServices(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -35,7 +33,18 @@ export default function AdminServicesPage() {
     fetchServices();
   }, []);
 
-  // Toast confirmation helper
+  const indexOfLastService = currentPage * servicesPerPage;
+  const indexOfFirstService = indexOfLastService - servicesPerPage;
+  const currentServices = services.slice(indexOfFirstService, indexOfLastService);
+  const totalPages = Math.ceil(services.length / servicesPerPage);
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+  };
+  const handlePrevPage = () => {
+    if (currentPage > 1) setCurrentPage(currentPage - 1);
+  };
+
   const confirmWithToast = (message, onConfirm) => {
     toast.info(
       ({ closeToast }) => (
@@ -60,14 +69,10 @@ export default function AdminServicesPage() {
           </div>
         </div>
       ),
-      {
-        autoClose: false,
-        closeOnClick: false,
-      }
+      { autoClose: false, closeOnClick: false }
     );
   };
-
-  // Toggle service status
+ 
   const toggleServiceStatus = (service) => {
     const action = service.status === "active" ? "inactive" : "active";
 
@@ -79,9 +84,7 @@ export default function AdminServicesPage() {
             `http://localhost:5001/admin/services/${service.id}/${action}`,
             {
               method: "PUT",
-              headers: {
-                Authorization: "Bearer " + localStorage.getItem("token"),
-              },
+              headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
             }
           );
 
@@ -102,90 +105,123 @@ export default function AdminServicesPage() {
     );
   };
 
-  if (loading) {
+  if (loading)
     return <div className="p-10 text-center text-gray-500">Loading services...</div>;
-  }
-
+ 
   return (
-    <div className="p-8 bg-[#fff7fa] min-h-screen">
-      <ToastContainer position="top-center" />
+    <div className="min-h-screen bg-[#fff7fa] flex">
+      <AdminSidebar /> {/* Sidebar */}
 
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-pink-500">Admin – Services</h1>
-        <button
-          onClick={() => router.push("/admin/services/add")}
-          className="text-white px-5 py-2 rounded-full bg-gradient-to-r from-pink-500 to-purple-500"
-        >
-          + Add Service
-        </button>
-      </div>
+      <main className="flex-1 p-8"> {/* Main content flex-1 */}
+        <ToastContainer position="top-center" />
 
-      {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-pink-50 text-gray-700">
-            <tr>
-              <th className="p-4 text-left">ID</th>
-              <th className="p-4 text-left">Name</th>
-              <th className="p-4 text-left">Price</th>
-              <th className="p-4 text-left">Duration</th>
-              <th className="p-4 text-left">Status</th>
-              <th className="p-4 text-center">Actions</th>
-            </tr>
-          </thead>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <button
+            onClick={() => router.back()}
+            className="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
+          >
+            ← Back
+          </button>
 
-          <tbody>
-            {services.length === 0 ? (
+          <h1 className="text-2xl font-bold text-pink-500 text-center flex-1">
+            Admin – Services
+          </h1>
+
+          <button
+            onClick={() => router.push("/admin/services/add")}
+            className="text-white px-5 py-2 rounded-full bg-gradient-to-r from-pink-500 to-purple-500"
+          >
+            + Add Service
+          </button>
+        </div>
+
+        {/* Table */}
+        <div className="bg-white rounded-xl shadow-sm border overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-pink-50 text-gray-700">
               <tr>
-                <td colSpan="6" className="p-6 text-center text-gray-500">
-                  No services found
-                </td>
+                <th className="p-4 text-left">ID</th>
+                <th className="p-4 text-left">Name</th>
+                <th className="p-4 text-left">Category</th>
+                <th className="p-4 text-left">Price</th>
+                <th className="p-4 text-left">Duration</th>
+                <th className="p-4 text-left">Status</th>
+                <th className="p-4 text-center">Actions</th>
               </tr>
-            ) : (
-              services.map((service) => (
-                <tr key={service.id} className="border-t">
-                  <td className="p-4 text-gray-900 font-medium">{service.id}</td>
-                  <td className="p-4 text-gray-900 font-medium">{service.name}</td>
-                  <td className="p-4 text-gray-900 font-medium">Rs. {service.price}</td>
-                  <td className="p-4 text-gray-900 font-medium">{service.duration}</td>
-                  <td className="p-4">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs ${
-                        service.status === "active"
-                          ? "bg-green-100 text-green-600"
-                          : "bg-gray-200 text-gray-500"
-                      }`}
-                    >
-                      {service.status}
-                    </span>
-                  </td>
-                  <td className="p-4 text-center space-x-2">
-                    <button
-                      onClick={() =>
-                        router.push(`/admin/services/edit/${service.id}`)
-                      }
-                      className="px-3 py-1 rounded bg-blue-100 text-blue-600 hover:bg-blue-200"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => toggleServiceStatus(service)}
-                      className={`px-3 py-1 rounded ${
-                        service.status === "active"
-                          ? "bg-red-100 text-red-600 hover:bg-red-200"
-                          : "bg-green-100 text-green-600 hover:bg-green-200"
-                      }`}
-                    >
-                      {service.status === "active" ? "Disable" : "Enable"}
-                    </button>
+            </thead>
+            <tbody>
+              {currentServices.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="p-6 text-center text-gray-500">
+                    No services found
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              ) : (
+                currentServices.map((service) => (
+                  <tr key={service.id} className="border-t">
+                    <td className="p-4 text-gray-900 font-medium">{service.id}</td>
+                    <td className="p-4 text-gray-900 font-medium">{service.name}</td>
+                    <td className="p-4 text-gray-900 font-medium">{service.category}</td>
+                    <td className="p-4 text-gray-900 font-medium">Rs. {service.price}</td>
+                    <td className="p-4 text-gray-900 font-medium">{service.duration}</td>
+                    <td className="p-4">
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs ${
+                          service.status === "active"
+                            ? "bg-green-100 text-green-600"
+                            : "bg-gray-200 text-gray-500"
+                        }`}
+                      >
+                        {service.status}
+                      </span>
+                    </td>
+                    <td className="p-4 text-center space-x-2">
+                      <button
+                        onClick={() => router.push(`/admin/services/edit/${service.id}`)}
+                        className="px-3 py-1 rounded bg-blue-100 text-blue-600 hover:bg-blue-200"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => toggleServiceStatus(service)}
+                        className={`px-3 py-1 rounded ${
+                          service.status === "active"
+                            ? "bg-red-100 text-red-600 hover:bg-red-200"
+                            : "bg-green-100 text-green-600 hover:bg-green-200"
+                        }`}
+                      >
+                        {service.status === "active" ? "Disable" : "Enable"}
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        <div className="mt-4 flex justify-center gap-4">
+          <button
+            onClick={handlePrevPage}
+            disabled={currentPage === 1}
+            className="px-4 py-2 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
+          >
+            Previous
+          </button>
+          <span className="px-4 py-2 text-gray-700">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={handleNextPage}
+            disabled={currentPage === totalPages}
+            className="px-4 py-2 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      </main>
     </div>
   );
-}
+} 

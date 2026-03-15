@@ -160,7 +160,7 @@ export default function SignupPage() {
     setLoading(true);
 
     const creatingToastId = toast.info("Creating Account...", {
-      position: "top-right",
+      position: "top-center",
       autoClose: false,
       hideProgressBar: false,
       closeOnClick: false,
@@ -180,8 +180,7 @@ export default function SignupPage() {
           fullName: formattedName,
           phone: phone.trim(),
           email: email.trim(),
-          password: password.trim(),
-          confirmPassword: confirmPassword.trim(),
+          password: password.trim(), 
           gender: finalGender,
         }),
       });
@@ -191,8 +190,7 @@ export default function SignupPage() {
       if (!res.ok) {
         toast.dismiss(creatingToastId);
         toast.error(data.message || "Signup failed", {
-          position: "top-right",
-          autoClose: 5000,
+          position: "top-center", 
         });
         setLoading(false);
         return;
@@ -201,8 +199,7 @@ export default function SignupPage() {
      
       toast.update(creatingToastId, {
         render: "Account Created Successfully!",
-        type: "success",
-        autoClose: 2000,
+        type: "success", 
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -218,8 +215,7 @@ export default function SignupPage() {
       console.error(err);
       toast.dismiss(creatingToastId);
       toast.error("Something went wrong. Please try again.", {
-        position: "top-right",
-        autoClose: 5000,
+        position: "top-center", 
       });
     } finally {
       setLoading(false);
@@ -229,8 +225,7 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen flex bg-white">
       <ToastContainer 
-      position ="top-center"
-      autoClose={5000}
+      position ="top-center" 
       hideProgressBar={false}
       newestOnTop={false} 
       closeOnClick

@@ -7,7 +7,13 @@ import Footer from "@/components/Footer";
 
 export default function UserServicesPage() {
   const [services, setServices] = useState([]);
+  const [filteredServices, setFilteredServices] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const [search, setSearch] = useState("");
+  const [genderFilter, setGenderFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+
   const router = useRouter();
 
   useEffect(() => {
@@ -15,40 +21,149 @@ export default function UserServicesPage() {
       .then((res) => res.json())
       .then((data) => {
         setServices(data);
+        setFilteredServices(data);
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
 
-  
+  useEffect(() => {
+    let temp = [...services];
+
+    if (search.trim()) {
+      temp = temp.filter((s) =>
+        s.name.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+
+    if (genderFilter !== "all") {
+      temp = temp.filter((s) => s.gender === genderFilter);
+    }
+
+    if (categoryFilter !== "all") {
+      temp = temp.filter((s) => s.category === categoryFilter);
+    }
+
+    setFilteredServices(temp);
+  }, [search, genderFilter, categoryFilter, services]);
+
   return (
     <div className="min-h-screen bg-[#fff7fa]">
       <Sidebar />
-
-      {/* Right side content */}
+ 
       <div className="flex flex-col min-h-screen md:ml-64">
         <main className="flex-1 p-8">
-          <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-purple-500 mb-8 text-center">
-            Our Beauty Services
-          </h1>
 
+          {/* Header */}
+          <div className="text-center mb-6">
+            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-purple-500">
+              Our Services
+            </h1>
+            <p className="text-gray-500 mt-2">
+              Discover all our beauty treatments
+            </p>
+          </div>
+
+          {/* TAB SWITCHER */}
+          <div className="flex justify-center mb-8">
+            <div className="flex bg-white border border-pink-200 rounded-full shadow-sm p-1">
+
+              <button
+                className="px-6 py-2 rounded-full text-sm font-medium bg-gradient-to-r from-pink-500 to-purple-500 text-white"
+              >
+                Services
+              </button>
+
+              <button
+                onClick={() => router.push("/packages")}
+                className="px-6 py-2 rounded-full text-sm font-medium text-gray-600 hover:text-black"
+              >
+                Packages
+              </button>
+
+            </div>
+          </div>
+
+          {/* FILTER BOX */}
+          <div className="max-w-7xl mx-auto mb-8 bg-white p-6 rounded-xl shadow-sm border border-pink-200 flex flex-col md:flex-row gap-4">
+
+            <input
+              type="text"
+              placeholder="Search services..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="flex-1 p-3 text-gray-700 placeholder-gray-400 border-2 border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-200"
+            />
+
+            <select
+              value={genderFilter}
+              onChange={(e) => setGenderFilter(e.target.value)}
+              className="p-3 text-gray-700 border-2 border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-200"
+            >
+              <option value="all">All Genders</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+            </select>
+
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="p-3 text-gray-700 border-2 border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-200"
+            >
+              <option value="all">All Categories</option>
+              <option value="hair">Hair</option>
+              <option value="skin care">Skin Care</option>
+              <option value="nails">Nails</option>
+              <option value="makeup">Makeup</option>
+              <option value="massage">Massage</option>
+              <option value="body grooming">Body Grooming</option>
+              <option value="spa">Spa</option>
+            </select>
+
+          </div>
+
+          {/* SERVICES GRID */}
           {loading ? (
             <p className="text-center text-gray-500">Loading services...</p>
-          ) : services.length === 0 ? (
+          ) : filteredServices.length === 0 ? (
             <p className="text-center text-gray-500">
-              No services available at the moment
+              No services match your criteria
             </p>
           ) : (
             <div className="grid md:grid-cols-3 gap-8 max-w-7xl mx-auto">
-              {services.map((service) => (
+              {filteredServices.map((service) => (
                 <div
                   key={service.id}
                   className="bg-white rounded-xl shadow-sm border overflow-hidden"
                 >
+                  {service.image && (
+                    <img
+                      src={`http://localhost:5001${service.image}`}
+                      alt={service.name}
+                      className="w-full h-52 object-cover object-center"
+                    />
+                  )}
+
                   <div className="p-6">
+
+                    <div className="flex gap-2 mb-2 flex-wrap">
+                      {service.gender && (
+                        <span className="inline-block bg-gradient-to-r from-pink-500 to-purple-500 text-white text-xs px-3 py-1 rounded-full">
+                          {service.gender}
+                        </span>
+                      )}
+
+                      {service.category && (
+                        <span className="inline-block bg-gradient-to-r from-pink-500 to-purple-500 text-white text-xs px-3 py-1 rounded-full">
+                          {service.category}
+                        </span>
+                      )}
+                    </div>
+
                     <h3 className="font-semibold text-lg text-gray-800 mb-1">
                       {service.name}
                     </h3>
+
                     <p className="text-sm text-gray-500 mb-4">
                       {service.description}
                     </p>
@@ -63,11 +178,12 @@ export default function UserServicesPage() {
                     </div>
 
                     <button
-                      onClick={() => router.push("/bookings")}
+                      onClick={() => router.push(`/bookings?serviceId=${service.id}`)}
                       className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-2 rounded-full"
                     >
-                      Book
+                      Book Now
                     </button>
+
                   </div>
                 </div>
               ))}
@@ -79,4 +195,4 @@ export default function UserServicesPage() {
       </div>
     </div>
   );
-}
+} 
