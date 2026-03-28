@@ -4,10 +4,21 @@ import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 
+// Helper to decode JWT and extract payload
+function parseJwt(token) {
+  try {
+    return JSON.parse(atob(token.split(".")[1]));
+  } catch (e) {
+    console.error("Invalid token", e);
+    return null;
+  }
+}
+
 export default function UserDashboard() {
   const [bookings, setBookings] = useState({ upcoming: [], completed: [], cancelled: [] });
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(null);
+  const [userId, setUserId] = useState(null); // New state for dynamic userId
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState("upcoming");
 
@@ -45,6 +56,10 @@ export default function UserDashboard() {
       return;
     }
 
+    // Decode JWT to get userId
+    const decoded = parseJwt(t);
+    if (decoded && decoded.id) setUserId(decoded.id);
+
     fetch("http://localhost:5001/bookings/my", {
       headers: { Authorization: `Bearer ${t}` },
     })
@@ -62,6 +77,7 @@ export default function UserDashboard() {
             location_type: booking.location_type || "salon",
             services: [{ name: booking.service, price: booking.price }],
             total_amount: booking.price,
+            feedback_submitted: booking.feedback_submitted || false,
           });
           return acc;
         }, { upcoming: [], completed: [], cancelled: [] });
@@ -80,7 +96,7 @@ export default function UserDashboard() {
 
   const filteredBookings = bookings[activeTab];
 
-  // RESCHEDULE HANDLERS
+  // ------------------ RESCHEDULE HANDLERS ------------------
   const openRescheduleModal = (booking) => {
     setCurrentBooking(booking);
     setNewDate(booking.booking_date.split("T")[0]);
@@ -100,9 +116,7 @@ export default function UserDashboard() {
   const handleReschedule = async () => {
     if (!currentBooking) return;
 
-    if (!newDate || !newTime || !newLocation) {
-      return alert("Please select date, time, and location");
-    }
+    if (!newDate || !newTime || !newLocation) return alert("Please select date, time, and location");
     if (newLocation === "home" && (!homeAddress || homeAddress.trim() === "")) {
       return alert("Please enter your home address for home service");
     }
@@ -127,8 +141,7 @@ export default function UserDashboard() {
 
       const data = await res.json();
       if (!res.ok) return alert(data.message || "Reschedule failed");
-
-      // Update the booking status and details in the state
+ 
       setBookings(prev => ({
         ...prev,
         [activeTab]: prev[activeTab].map(b =>
@@ -147,7 +160,7 @@ export default function UserDashboard() {
     }
   };
 
-  // CANCEL HANDLERS
+  // ------------------ CANCEL HANDLERS ------------------
   const openCancelModal = (booking) => {
     setCurrentBooking(booking);
     setReason("");
@@ -171,17 +184,7 @@ export default function UserDashboard() {
       const data = await res.json();
       if (!res.ok) return alert(data.message || "Cancel failed");
 
-      // Update the status of the cancelled booking to "cancelled"
-      setBookings(prev => ({
-        ...prev,
-        [activeTab]: prev[activeTab].map(b =>
-          b.id === currentBooking.id
-            ? { ...b, status: "cancelled" }
-            : b
-        ),
-      }));
-
-      // Move the cancelled booking to "cancelled" tab
+      // Update bookings state
       setBookings(prev => {
         const updatedBookings = { ...prev };
         updatedBookings.cancelled.push({ ...currentBooking, status: "cancelled" });
@@ -198,25 +201,18 @@ export default function UserDashboard() {
     }
   };
 
-  // FEEDBACK HANDLERS
+  // ------------------ FEEDBACK HANDLERS ------------------
   const openFeedbackModal = (booking) => {
     setCurrentBooking(booking);
-    setRating(0); // Reset the rating
-    setFeedbackText(""); // Reset the feedback text
+    setRating(0);
+    setFeedbackText("");
     setShowFeedbackModal(true);
   };
 
   const handleSubmitFeedback = async () => {
     if (!currentBooking) return;
-
-    if (rating === 0 || feedbackText.trim() === "") {
-      return alert("Please provide a rating and feedback.");
-    }
-
-    const feedback = {
-      rating,
-      feedback: feedbackText,
-    };
+    if (!userId) return alert("User not logged in");
+    if (rating === 0 || feedbackText.trim() === "") return alert("Please provide a rating and feedback.");
 
     try {
       const res = await fetch(`http://localhost:5001/bookings/${currentBooking.id}/feedback`, {
@@ -225,14 +221,14 @@ export default function UserDashboard() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(feedback),
+        body: JSON.stringify({ userId, rating, feedback: feedbackText }),
       });
 
-      const data = await res.json();
-      if (!res.ok) return alert(data.message || "Feedback submission failed");
+      const data = await res.json().catch(() => null);
+      if (!res.ok) return alert(data?.message || "Feedback submission failed");
 
-      // Mark feedback as submitted and update state
-      setBookings(prev => ({
+      setBookings(prev => ({ 
+        
         ...prev,
         completed: prev.completed.map(b =>
           b.id === currentBooking.id
@@ -242,22 +238,26 @@ export default function UserDashboard() {
       }));
 
       setShowFeedbackModal(false);
+      setRating(0);
+      setFeedbackText("");
       alert("Thank you for your feedback!");
     } catch (err) {
       console.error(err);
-      alert("Something went wrong");
+      alert("Something went wrong. Please try again.");
     }
   };
 
+  // ------------------ RENDER ------------------
   return (
     <div className="min-h-screen bg-[#fff7fa]">
-      <Sidebar /> 
+      <Sidebar />
       <div className="flex flex-col min-h-screen md:ml-64">
         <main className="flex-1 p-6">
           <h1 className="text-3xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-purple-500">
             My Dashboard
           </h1>
 
+          {/* Tabs */}
           <div className="flex gap-6 mb-6 border-b border-gray-200">
             {["upcoming", "completed", "cancelled"].map((tab) => (
               <button
@@ -270,6 +270,7 @@ export default function UserDashboard() {
             ))}
           </div>
 
+          {/* Bookings */}
           {loading ? (
             <p className="text-gray-500">Loading your bookings...</p>
           ) : filteredBookings.length === 0 ? (
@@ -278,15 +279,13 @@ export default function UserDashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredBookings.map((b) => (
                 <div key={b.id} className="bg-white p-5 rounded-xl shadow hover:shadow-lg transition relative">
-                  <span
-                    className={`absolute top-3 right-3 px-3 py-1 text-sm font-semibold rounded-full ${b.status === "upcoming" ? "bg-blue-100 text-blue-600" : b.status === "completed" ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"}`}
-                  >
+                  <span className={`absolute top-3 right-3 px-3 py-1 text-sm font-semibold rounded-full ${b.status === "upcoming" ? "bg-blue-100 text-blue-600" : b.status === "completed" ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"}`}>
                     {b.status.charAt(0).toUpperCase() + b.status.slice(1)}
                   </span>
 
                   <h2 className="text-lg font-semibold text-gray-800 mb-1">
                     {b.services.map((s) => s.name).join(", ")}
-                  </h2> 
+                  </h2>
                   <p className="text-gray-500 text-sm mb-2">Booking ID: {b.id}</p>
 
                   <div className="text-gray-600 text-sm space-y-1 mb-4">
@@ -297,29 +296,22 @@ export default function UserDashboard() {
                     <p className="text-base font-bold text-pink-400">Total Amount: Rs.{b.total_amount}</p>
                   </div>
 
+                  {/* Upcoming */}
                   {b.status === "upcoming" && (
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => openRescheduleModal(b)}
-                        className="flex-1 py-2 px-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded hover:scale-105 transition"
-                      >
+                      <button onClick={() => openRescheduleModal(b)} className="flex-1 py-2 px-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded hover:scale-105 transition">
                         Reschedule
                       </button>
-                      <button
-                        onClick={() => openCancelModal(b)}
-                        className="flex-1 py-2 px-3 bg-red-100 text-red-600 rounded hover:scale-105 transition"
-                      >
+                      <button onClick={() => openCancelModal(b)} className="flex-1 py-2 px-3 bg-red-100 text-red-600 rounded hover:scale-105 transition">
                         Cancel
                       </button>
                     </div>
                   )}
 
+                  {/* Completed without feedback */}
                   {b.status === "completed" && !b.feedback_submitted && (
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => openFeedbackModal(b)}
-                        className="flex-1 py-2 px-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded hover:scale-105 transition"
-                      >
+                      <button onClick={() => openFeedbackModal(b)} className="flex-1 py-2 px-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded hover:scale-105 transition">
                         Leave Feedback
                       </button>
                     </div>

@@ -127,7 +127,7 @@ const regex = new RegExp(
     if (data.user.role === "admin") {
       router.replace("/admin/dashboard");
     } else {
-      router.replace("/dashboard");
+      router.replace("/services");
     }
   },1000);
 }

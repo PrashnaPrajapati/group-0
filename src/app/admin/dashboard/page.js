@@ -7,12 +7,10 @@ import AdminSidebar from "@/components/AdminSidebar";
 import "react-toastify/dist/ReactToastify.css";
 
 import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
+  LineChart, Line,
+  BarChart, Bar,
+  PieChart, Pie,
+  XAxis, YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
@@ -20,257 +18,128 @@ import {
 
 export default function AdminDashboard() {
   const router = useRouter();
-
-  const [stats, setStats] = useState(null);
-  const [bookings, setBookings] = useState([]);
-  const [services, setServices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [servicesLoading, setServicesLoading] = useState(true);
-
+  const [stats, setStats] = useState(null);  
+  const [loading, setLoading] = useState(true); 
   const [activeTab, setActiveTab] = useState("services");
+ 
+  const [monthlyData, setMonthlyData] = useState([]);
+  const [categoryData, setCategoryData] = useState([]);
+  const [sentimentData, setSentimentData] = useState([]);
 
-  // Add service form states
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [form, setForm] = useState({
-    name: "",
-    description: "",
-    price: "",
-    duration: "",
-    gender: "",
-    category: "",
-  });
-  const [image, setImage] = useState(null);
-  const [preview, setPreview] = useState(null);
-  const [formLoading, setFormLoading] = useState(false);
-  const [formError, setFormError] = useState("");
+  const [servicesList, setServicesList] = useState([]);
+  const [packagesList, setPackagesList] = useState([]);
+  const [bookingsList, setBookingsList] = useState([]);
+  const [feedbackList, setFeedbackList] = useState([]);
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const servicesPerPage = 10;
+  const COLORS = ["#ec4899", "#a855f7", "#6366f1", "#14b8a6", "#facc15"];
+
+  const safeFetch = async (url, token) => {
+    try {
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      const text = await res.text();
+      try {
+        const json = JSON.parse(text);
+        return Array.isArray(json) ? json : [];
+      } catch {
+        console.error("❌ Not JSON:", text);
+        return [];
+      }
+    } catch (err) {
+      console.error("Fetch error:", err);
+      return [];
+    }
+  };
+
+  const renderPieLabel = (entry, index, data) => {
+    const total = data.reduce((sum, item) => sum + (item.value || item.count), 0);
+    const percent = total ? ((entry.value || entry.count) / total * 100).toFixed(1) : 0;
+    return `${entry.name || entry.sentiment}: ${percent}%`;
+  };
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    const role = localStorage.getItem("role");
-
-    if (!token) return router.replace("/login");
+    const role = localStorage.getItem("role"); 
+    if (!token) return router.replace("/login"); 
     if (role !== "admin") return router.replace("/dashboard");
+ 
+    const fetchDashboard = async () => {
+      try {
+        const res = await fetch("http://localhost:5001/admin/stats", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        setStats(data);
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to load stats");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    fetchDashboard();
-    fetchServices();
-  }, [router]);
+    const fetchCharts = async () => {
+      const [monthly, category, sentiment] = await Promise.all([
+        safeFetch("http://localhost:5001/admin/monthly-stats", token),
+        safeFetch("http://localhost:5001/admin/service-categories", token),
+        safeFetch("http://localhost:5001/admin/ai-sentiment", token),
+      ]);
 
-  const fetchDashboard = async () => {
-    try {
-      const token = localStorage.getItem("token");
+      const coloredCategory = category.map((item, i) => ({ ...item, fill: COLORS[i % COLORS.length] }));
+      const coloredSentiment = sentiment.map((item, i) => ({ ...item, fill: COLORS[i % COLORS.length] }));
 
-      const resStats = await fetch("http://localhost:5001/admin/stats", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      setMonthlyData(monthly);
+      setCategoryData(coloredCategory);
+      setSentimentData(coloredSentiment);
+    };
 
-      const statsData = await resStats.json();
+    const fetchTabData = async () => {
+      const [services, packages, bookings, feedback] = await Promise.all([
+        safeFetch("http://localhost:5001/services", token),
+        safeFetch("http://localhost:5001/packages", token),
+        safeFetch("http://localhost:5001/bookings/my", token),
+        safeFetch("http://localhost:5001/feedback", token),
+      ]);
 
-      const resBookings = await fetch(
-        "http://localhost:5001/admin/bookings?limit=5&sort=desc",
-        { headers: { Authorization: `Bearer ${token}` } }
+      // Top 5 for dashboard
+      setServicesList(services
+        .sort((a,b) => (b.rating || 0) - (a.rating || 0))
+        .slice(0,5)
       );
 
-      const bookingsData = await resBookings.json();
+      setPackagesList(packages
+        .map(pkg => ({ ...pkg, services: pkg.services?.map(s => s.name) || [] }))
+        .sort((a,b) => (b.rating || 0) - (a.rating || 0))
+        .slice(0,5)
+      );
 
-      setStats(statsData);
-      setBookings(bookingsData);
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to load dashboard data");
-    } finally {
-      setLoading(false);
-    }
-  };
+      setBookingsList(bookings.slice(0,5));
+      setFeedbackList(feedback);
+    };
 
-  const fetchServices = async () => {
-    try {
-      setServicesLoading(true);
-      const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5001/admin/services", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setServices(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error(err);
-      setServices([]);
-    } finally {
-      setServicesLoading(false);
-    }
-  };
+    fetchDashboard();
+    fetchCharts();
+    fetchTabData();
+  }, [router]);
 
-  const indexOfLastService = currentPage * servicesPerPage;
-  const indexOfFirstService = indexOfLastService - servicesPerPage;
-  const currentServices = services.slice(indexOfFirstService, indexOfLastService);
-  const totalPages = Math.ceil(services.length / servicesPerPage);
-
-  const handleNextPage = () => {
-    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
-  };
-  const handlePrevPage = () => {
-    if (currentPage > 1) setCurrentPage(currentPage - 1);
-  };
-
-  const confirmWithToast = (message, onConfirm) => {
-    toast.info(
-      ({ closeToast }) => (
-        <div>
-          <p className="font-medium mb-3">{message}</p>
-          <div className="flex gap-3">
-            <button
-              onClick={() => {
-                onConfirm();
-                closeToast();
-              }}
-              className="px-3 py-1 rounded bg-pink-500 text-white text-sm"
-            >
-              Yes
-            </button>
-            <button
-              onClick={closeToast}
-              className="px-3 py-1 rounded bg-gray-200 text-gray-700 text-sm"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      ),
-      { autoClose: false, closeOnClick: false }
-    );
-  };
-
-  const toggleServiceStatus = (service) => {
-    const action = service.status === "active" ? "inactive" : "active";
-
-    confirmWithToast(
-      `Are you sure you want to mark this service as ${action}?`,
-      async () => {
-        try {
-          const res = await fetch(
-            `http://localhost:5001/admin/services/${service.id}/${action}`,
-            {
-              method: "PUT",
-              headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-            }
-          );
-
-          if (!res.ok) {
-            toast.error("Failed to update service status");
-            return;
-          }
-
-          toast.success(
-            `Service ${action === "active" ? "enabled" : "disabled"} successfully`
-          );
-
-          fetchServices();
-        } catch {
-          toast.error("Status update failed");
-        }
-      }
-    );
-  };
-
-  // Add Service handlers
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setImage(file);
-      setPreview(URL.createObjectURL(file));
-    }
-  };
-
-  const handleAddService = async (e) => {
-    e.preventDefault();
-    setFormError("");
-
-    if (!form.name || !form.price || !form.duration || !form.gender || !form.category) {
-      setFormError("Please fill all required fields");
-      return;
-    }
-
-    setFormLoading(true);
-
-    try {
-      const formData = new FormData();
-      formData.append("name", form.name);
-      formData.append("description", form.description);
-      formData.append("price", form.price);
-      formData.append("duration", form.duration);
-      formData.append("gender", form.gender);
-      formData.append("category", form.category);
-      if (image) formData.append("image", image);
-
-      const res = await fetch("http://localhost:5001/admin/services", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        body: formData,
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setFormError(data.message || "Failed to add service");
-        return;
-      }
-
-      toast.success("Service added successfully ✅", { position: "top-center" });
-      setShowAddForm(false);
-      setForm({ name: "", description: "", price: "", duration: "", gender: "", category: "" });
-      setImage(null);
-      setPreview(null);
-      fetchServices();
-    } catch (err) {
-      console.error(err);
-      setFormError("Something went wrong");
-    } finally {
-      setFormLoading(false);
-    }
-  };
-
-  const monthlyData = [
-    
-  ];
-
-  if (loading) {
-    return <div className="p-10 text-center text-gray-500">Loading dashboard...</div>;
-  }
+  if (loading) return <div className="p-10 text-center text-gray-500">Loading dashboard...</div>;
 
   return (
     <AdminSidebar>
       <ToastContainer position="top-center" />
-      <div className="p-8 bg-[#fff7fa] min-h-screen space-y-10 relative">
-        {/* Stats Cards */}
+      <div className="p-8 bg-[#fff7fa] min-h-screen space-y-8">
+
+        {/* Dashboard Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white p-6 rounded-xl shadow text-center">
-            <p className="text-gray-500">Total Services</p>
-            <p className="text-3xl font-bold text-pink-500">{stats?.totalServices || 0}</p>
-          </div>
-          <div className="bg-white p-6 rounded-xl shadow text-center">
-            <p className="text-gray-500">Total Packages</p>
-            <p className="text-3xl font-bold text-pink-500">{stats?.totalPackages || 0}</p>
-          </div>
-          <div className="bg-white p-6 rounded-xl shadow text-center">
-            <p className="text-gray-500">Total Bookings</p>
-            <p className="text-3xl font-bold text-pink-500">{stats?.totalBookings || 0}</p>
-          </div>
-          <div className="bg-white p-6 rounded-xl shadow text-center">
-            <p className="text-gray-500">Total Users</p>
-            <p className="text-3xl font-bold text-pink-500">{stats?.totalUsers || 0}</p>
-          </div>
+          <Card title="Total Services" value={stats?.totalServices} />
+          <Card title="Total Packages" value={stats?.totalPackages} />
+          <Card title="Total Bookings" value={stats?.totalBookings} />
+          <Card title="Total Users" value={stats?.totalUsers} />
         </div>
 
-        {/* Charts */}
+        {/* Dashboard Charts */}
         <div className="grid md:grid-cols-2 gap-6">
-          <div className="bg-white p-6 rounded-xl shadow">
-            <h3 className="font-semibold mb-4">Monthly Bookings</h3>
+
+          <ChartCard title="Monthly Bookings">
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={monthlyData}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -280,10 +149,9 @@ export default function AdminDashboard() {
                 <Line type="monotone" dataKey="bookings" stroke="#ec4899" strokeWidth={3} />
               </LineChart>
             </ResponsiveContainer>
-          </div>
+          </ChartCard>
 
-          <div className="bg-white p-6 rounded-xl shadow">
-            <h3 className="font-semibold mb-4">Revenue</h3>
+          <ChartCard title="Revenue">
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={monthlyData}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -293,253 +161,191 @@ export default function AdminDashboard() {
                 <Bar dataKey="revenue" fill="#a855f7" />
               </BarChart>
             </ResponsiveContainer>
-          </div>
+          </ChartCard>
+          
+
+          <ChartCard title="Service Category Distribution">
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie
+                  data={categoryData}
+                  dataKey="value"
+                  nameKey="name"
+                  outerRadius={100}
+                  label={(entry,index)=>renderPieLabel(entry,index,categoryData)}
+                />
+                <Tooltip formatter={value => [value,"Services"]} />
+              </PieChart>
+            </ResponsiveContainer>
+          </ChartCard>
+
+          <ChartCard title="AI Sentiment Analysis">
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={sentimentData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="sentiment" />
+                <YAxis />
+                <Tooltip formatter={value => [value, "Feedbacks"]} />
+                <Bar dataKey="count" fill="#ec4899" />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
+
         </div>
 
         {/* Tabs */}
-        <div>
-          <div className="bg-gray-400  rounded-full p-2 flex max-w-3xl">
-            {["services", "packages", "bookings", "feedback"].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`flex-1 py-2 rounded-full transition ${
-                  activeTab === tab ? "bg-white shadow" : "hover:bg-gray-300"
-                }`}
-              >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-6 bg-white rounded-xl shadow p-6 relative">
-            {/* Services Tab */}
-            {activeTab === "services" && (
-              <div className="relative">
-                {/* Blur and disable interaction of background content when form is open */}
-                <div className={showAddForm ? "blur-sm pointer-events-none select-none" : ""}>
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-2xl font-semibold bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
-                      Manage Services
-                    </h3>
-                    <button
-                      onClick={() => setShowAddForm(!showAddForm)}
-                      className="text-white px-5 py-2 rounded-full bg-gradient-to-r from-pink-500 to-purple-500"
-                    >
-                      {showAddForm ? "Cancel" : "+ Add Service"}
-                    </button>
-                  </div>
-
-                  {servicesLoading ? (
-                    <p className="text-center text-gray-500">Loading services...</p>
-                  ) : (
-                    <>
-                      <div className="bg-white rounded-xl shadow-sm border overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead className="bg-pink-50 text-gray-700">
-                            <tr>
-                              <th className="p-4 text-left">ID</th>
-                              <th className="p-4 text-left">Service Name</th>
-                              <th className="p-4 text-left">Category</th>
-                              <th className="p-4 text-left">Price</th>
-                              <th className="p-4 text-left">Duration</th>
-                              <th className="p-4 text-left">Status</th>
-                              <th className="p-4 text-center">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {currentServices.length === 0 ? (
-                              <tr>
-                                <td colSpan="7" className="p-6 text-center text-gray-500">
-                                  No services found
-                                </td>
-                              </tr>
-                            ) : (
-                              currentServices.map((service) => (
-                                <tr key={service.id} className="border-t">
-                                  <td className="p-4 text-gray-900 font-medium">{service.id}</td>
-                                  <td className="p-4 text-gray-900 font-medium">{service.name}</td>
-                                  <td className="p-4 text-gray-900 font-medium">{service.category}</td>
-                                  <td className="p-4 text-gray-900 font-medium">Rs. {service.price}</td>
-                                  <td className="p-4 text-gray-900 font-medium">{service.duration}</td>
-                                  <td className="p-4">
-                                    <span
-                                      className={`px-3 py-1 rounded-full text-xs ${
-                                        service.status === "active"
-                                          ? "bg-green-100 text-green-600"
-                                          : "bg-gray-200 text-gray-500"
-                                      }`}
-                                    >
-                                      {service.status}
-                                    </span>
-                                  </td>
-                                  <td className="p-4 text-center space-x-2">
-                                    <button
-                                      onClick={() => router.push(`/admin/services/edit/${service.id}`)}
-                                      className="px-3 py-1 rounded bg-blue-100 text-blue-600 hover:bg-blue-200"
-                                    >
-                                      Edit
-                                    </button>
-                                    <button
-                                      onClick={() => toggleServiceStatus(service)}
-                                      className={`px-3 py-1 rounded ${
-                                        service.status === "active"
-                                          ? "bg-red-100 text-red-600 hover:bg-red-200"
-                                          : "bg-green-100 text-green-600 hover:bg-green-200"
-                                      }`}
-                                    >
-                                      {service.status === "active" ? "Disable" : "Enable"}
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Pagination */}
-                      <div className="mt-4 flex justify-center gap-4">
-                        <button
-                          onClick={handlePrevPage}
-                          disabled={currentPage === 1}
-                          className="px-4 py-2 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
-                        >
-                          Previous
-                        </button>
-                        <span className="px-4 py-2 text-gray-700">
-                          Page {currentPage} of {totalPages}
-                        </span>
-                        <button
-                          onClick={handleNextPage}
-                          disabled={currentPage === totalPages}
-                          className="px-4 py-2 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
-                        >
-                          Next
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Add Service Form (inside the page, not fullscreen) */}
-                {showAddForm && (
-                  <div className="absolute top-0 left-0 right-0 bg-white p-6 rounded-lg shadow-lg max-w-3xl mx-auto z-20 mt-2 border border-pink-300">
-                    {formError && (
-                      <div className="bg-red-100 text-red-600 p-3 rounded mb-4 text-sm">{formError}</div>
-                    )}
-                    <form onSubmit={handleAddService} className="space-y-4">
-                      <div>
-                        <label className="block text-sm text-gray-900 mb-1">Service Name *</label>
-                        <input
-                          type="text"
-                          name="name"
-                          value={form.name}
-                          onChange={handleChange}
-                          className="w-full border-2 border-gray-200 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm text-gray-900 mb-1">Description</label>
-                        <textarea
-                          name="description"
-                          value={form.description}
-                          onChange={handleChange}
-                          rows="3"
-                          className="w-full border-2 border-gray-200 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm text-gray-900 mb-1">Price (Rs.) *</label>
-                        <input
-                          type="number"
-                          name="price"
-                          value={form.price}
-                          onChange={handleChange}
-                          className="w-full border-2 border-gray-200 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm text-gray-900 mb-1">Duration *</label>
-                        <input
-                          type="text"
-                          name="duration"
-                          value={form.duration}
-                          onChange={handleChange}
-                          className="w-full border-2 border-gray-200 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm text-gray-900 mb-1">Gender *</label>
-                        <select
-                          name="gender"
-                          value={form.gender}
-                          onChange={handleChange}
-                          className="w-full border-2 border-gray-200 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-500"
-                        >
-                          <option value="">Select Gender</option>
-                          <option value="male">Male</option>
-                          <option value="female">Female</option>
-                          <option value="all">All</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm text-gray-900 mb-1">Category *</label>
-                        <select
-                          name="category"
-                          value={form.category}
-                          onChange={handleChange}
-                          className="w-full border-2 border-gray-200 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-500"
-                        >
-                          <option value="">Select Category</option>
-                          <option value="hair">Hair</option>
-                          <option value="skin care">Skin Care</option>
-                          <option value="nails">Nails</option>
-                          <option value="makeup">Makeup</option>
-                          <option value="massage">Massage</option>
-                          <option value="body grooming">Body Grooming</option>
-                          <option value="spa">Spa</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm text-gray-900 mb-1">Image</label>
-                        <div className="flex items-center space-x-4">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            id="serviceImage"
-                            onChange={handleImageChange}
-                            className="hidden"
-                          />
-                          <label
-                            htmlFor="serviceImage"
-                            className="cursor-pointer px-4 py-2 bg-pink-400 text-white rounded hover:bg-pink-600"
-                          >
-                            {image ? "Change Image" : "Choose Image"}
-                          </label>
-                          {image && <span className="text-gray-700">{image.name}</span>}
-                        </div>
-                        {preview && (
-                          <img src={preview} alt="Preview" className="mt-2 w-32 h-32 object-cover rounded" />
-                        )}
-                      </div>
-                      <div className="flex justify-end pt-2">
-                        <button
-                          type="submit"
-                          disabled={formLoading}
-                          className="px-6 py-2 rounded-full bg-gradient-to-r from-pink-500 to-purple-500 text-white disabled:opacity-50"
-                        >
-                          {formLoading ? "Saving..." : "Add Service"}
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+        <div className="bg-gray-100 rounded-full p-2 flex max-w-3xl mt-8 text-gray-600">
+          {["services","packages","bookings","feedback"].map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 py-2 rounded-full ${activeTab===tab?"bg-white shadow":"hover:bg-gray-200"}`}
+            >
+              {tab.charAt(0).toUpperCase()+tab.slice(1)}
+            </button>
+          ))}
         </div>
+
+        {/* Tab Content */}
+        {/* Tab Content */}
+<div className="text-gray-600">
+  {activeTab === "services" && (
+    <TabContent title="Top 5 Services" items={servicesList} type="services" />
+  )}
+  {activeTab === "packages" && (
+    <TabContent title="Top 5 Packages" items={packagesList} type="packages" />
+  )}
+  {activeTab === "bookings" && (
+    <TabContent title="Top 5 Bookings" items={bookingsList} type="bookings" />
+  )}
+  {activeTab === "feedback" && (
+    <TabContent title="All Feedbacks" items={feedbackList} type="feedback" />
+  )}
+</div>
+
       </div>
     </AdminSidebar>
   );
-} 
+}
+
+// Stats card
+function Card({ title, value }) {
+  return (
+    <div className="bg-white p-6 rounded-xl shadow text-center">
+      <p className="text-gray-500">{title}</p>
+      <p className="text-3xl font-bold text-pink-500">{value||0}</p>
+    </div>
+  );
+}
+
+// Chart wrapper
+function ChartCard({ title, children }) {
+  return (
+    <div className="bg-white p-6 rounded-xl shadow">
+      <h3 className="font-semibold mb-4">{title}</h3>
+      {children}
+    </div>
+  );
+}
+
+// Tab content component
+function TabContent({ title, items, type }) {
+  if (!items || items.length === 0) {
+    return <div className="bg-white p-10 rounded-xl shadow text-center text-gray-500 mt-6">No data found.</div>;
+  }
+
+  return (
+    <div className="bg-white p-6 rounded-xl shadow mt-6">
+      <h3 className="text-xl font-semibold mb-4">{title}</h3>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm text-gray-600 border-separate border-spacing-0">
+          <thead className="bg-pink-50 text-gray-700">
+            <tr>
+              {type === "services" && <>
+                <th className="p-3">Name</th>
+                <th className="p-3">Category</th>
+                <th className="p-3">Price</th>
+                <th className="p-3">Duration</th>
+                <th className="p-3">Ratings</th>
+              </>}
+              {type === "packages" && <>
+                <th className="p-3">Name</th>
+                <th className="p-3">Price</th>
+                <th className="p-3">Services Included</th>
+                <th className="p-3">Ratings</th>
+              </>}
+              {type === "bookings" && <>
+                <th className="p-3">Service/Package</th>
+                <th className="p-3">Status</th>
+                <th className="p-3">Amount</th>
+              </>}
+              {type === "feedback" && <>
+                <th className="p-3">Customer</th>
+                <th className="p-3">Feedback</th>
+                <th className="p-3">Rating</th>
+              </>}
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item, index) => (
+              <tr key={index} className="border-t">
+                {type === "services" && <>
+                  <td className="p-3 font-medium text-gray-700">{item.name}</td>
+                  <td className="p-3 text-gray-600">{item.category}</td>
+                  <td className="p-3 text-gray-600 ">Rs. {item.price}</td>
+                  <td className="p-3 text-gray-600">{item.duration}</td>
+                  <td className="p-3 text-gray-600">{item.rating || "-"}</td>
+                </>}
+                {type === "packages" && <>
+                  <td className="p-3 font-medium text-gray-700">{item.name}</td>
+                  <td className="p-3 text-gray-600 ">Rs. {item.price}</td>
+                  <td className="p-3 text-gray-600">{item.services?.join(", ")}</td>
+                  <td className="p-3 text-gray-600">{item.rating || "-"}</td>
+                </>}
+                {type === "bookings" && <>
+                  <td className="p-3 text-gray-600">{item.service || item.package}</td>
+                  <td className="p-3 text-gray-600">
+                    <select
+                      value={item.status}
+                      onChange={(e) => {
+                        const newStatus = e.target.value;
+                        // Optimistic update
+                        const updatedBookings = [...items];
+                        updatedBookings[index] = {...item, status: newStatus};
+                        items = updatedBookings; // update local variable for rendering
+                        // Update backend
+                        fetch(`http://localhost:5001/admin/bookings/${item.id}/status`, {
+                          method: "PUT",
+                          headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${localStorage.getItem("token")}`,
+                          },
+                          body: JSON.stringify({ status: newStatus }),
+                        }).catch(err => console.error("Failed to update status:", err));
+                      }}
+                      className={`border rounded px-2 py-1 ${
+                        item.status === "upcoming" ? "text-blue-600 border-blue-200" :
+                        item.status === "completed" ? "text-green-600 border-green-200" :
+                        "text-red-600 border-red-200"
+                      }`}
+                    >
+                      <option value="upcoming">Upcoming</option>
+                      <option value="completed">Completed</option>
+                    </select>
+                  </td>
+                  <td className="p-3 text-gray-600 font-semibold">{item.price || 0}</td>
+                </>}
+                {type === "feedback" && <>
+                  <td className="p-3 font-medium">{item.customer}</td>
+                  <td className="p-3">{item.feedback}</td>
+                  <td className="p-3">{item.rating || "-"}</td>
+                </>}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

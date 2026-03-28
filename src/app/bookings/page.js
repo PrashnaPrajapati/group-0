@@ -69,62 +69,64 @@ export default function BookingsPage() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setErrorMessage("");
+  e.preventDefault();
+  setErrorMessage("");
 
-    if (!token) return setErrorMessage("You must be logged in to book a service!");
-    if (
-      (bookingType === "service" && selectedServices.length === 0) ||
-      (bookingType === "package" && !selectedPackage) ||
-      !date?.trim() ||
-      !time?.trim() ||
-      !locationType?.trim() ||
-      (locationType === "home" && !address?.trim())
-    )
-      return setErrorMessage("Please fill all required fields");
+  if (!token) return setErrorMessage("You must be logged in to book a service!");
+  if (
+    (bookingType === "service" && selectedServices.length === 0) ||
+    (bookingType === "package" && !selectedPackage) ||
+    !date?.trim() ||
+    !time?.trim() ||
+    !locationType?.trim() ||
+    (locationType === "home" && !address?.trim())
+  )
+    return setErrorMessage("Please fill all required fields");
 
-    setLoading(true);
+  setLoading(true);
 
-    try {
-      const requestBody = {
-        package_id: bookingType === "package" ? selectedPackage : null,
-        service_ids: selectedServices.map(Number),
-        booking_date: date,
-        booking_time: time,
-        location_type: locationType,
-        address: locationType === "home" ? address.trim() : "",
-        notes: notes.trim(),
-      };
+  try {
+    const requestBody = {
+      package_id: bookingType === "package" ? selectedPackage : null,
+      service_ids: selectedServices.map(Number),
+      booking_date: date,
+      booking_time: time,
+      location_type: locationType,
+      address: locationType === "home" ? address.trim() : "",
+      notes: notes.trim(),
+    };
 
-      const res = await fetch("http://localhost:5001/bookings", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(requestBody),
-      });
+    const res = await fetch("http://localhost:5001/bookings", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
 
-      const data = await res.json();
-      if (!res.ok) return setErrorMessage(data.message || "Booking failed");
+    const data = await res.json();
+    if (!res.ok) return setErrorMessage(data.message || "Booking failed");
 
-      router.push("/dashboard");
+    // Redirect to payment page with bookingIds and totalPrice
+    const bookingIdsParam = data.bookingIds ? data.bookingIds.join(",") : data.bookingId;
+    router.push(`/payments?bookingIds=${bookingIdsParam}&totalPrice=${totalPrice}`);
 
-      // Reset form
-      setSelectedServices(serviceIdFromQuery ? [serviceIdFromQuery] : []);
-      setSelectedPackage(null);
-      setDate("");
-      setTime("");
-      setNotes("");
-      setLocationType("");
-      setAddress("");
-    } catch (err) {
-      console.error(err);
-      setErrorMessage("Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    // Reset form (optional)
+    setSelectedServices(serviceIdFromQuery ? [serviceIdFromQuery] : []);
+    setSelectedPackage(null);
+    setDate("");
+    setTime("");
+    setNotes("");
+    setLocationType("");
+    setAddress("");
+  } catch (err) {
+    console.error(err);
+    setErrorMessage("Something went wrong. Please try again.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const selectedServiceObjects = services.filter((s) =>
     selectedServices.includes(s.id)

@@ -166,8 +166,7 @@ export default function AdminBookingsPage() {
                       }`}
                     >
                       <option value="upcoming">Upcoming</option>
-                      <option value="completed">Completed</option>
-                      <option value="cancelled">Cancelled</option>
+                      <option value="completed">Completed</option> 
                     </select>
                   </td>
 

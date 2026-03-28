@@ -46,7 +46,13 @@ export default function ProfilePage() {
           data.photoUrl = `http://localhost:5001${data.photoUrl}`;
         }
 
-        setProfile(data);
+        setProfile({
+  fullName: data.fullName || "",
+  email: data.email || "",
+  phone: data.phone || "",
+  gender: data.gender || "",
+  address: data.address || "",
+  photoUrl: data.photoUrl || "",});
       } catch (err) {
         toast.error("Failed to load profile");
         console.error(err);

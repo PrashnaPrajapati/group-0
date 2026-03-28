@@ -14,7 +14,7 @@ const port = 5001;
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: "*",  // Allow requests from any origin
+    origin: "*",  
     methods: ["GET", "POST"]
   }
 });
@@ -25,8 +25,7 @@ let admin = {};
 
 const fs = require("fs");
 const uploadDir = "uploads";
-
-// Create uploads folder if it doesn't exist
+ 
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir);
   console.log("Created uploads directory");
@@ -194,6 +193,8 @@ app.post("/login", async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 });
+
+
  
 
 app.post("/forgot-password", (req, res) => { 
@@ -241,8 +242,7 @@ app.post("/reset-password", async (req, res) => {
   const { token, newPassword } = req.body;
   if (!token || !newPassword)
     return res.status(400).json({ message: "Missing token or password" });
-
-  // Validate password strength
+ 
   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
   if (!passwordRegex.test(newPassword)) {
     return res.status(400).json({
@@ -269,14 +269,12 @@ app.post("/reset-password", async (req, res) => {
 
       try {
         const currentHashedPassword = results[0].password;
-
-        // Check if new password matches the old password
+ 
         const isSamePassword = await bcrypt.compare(newPassword, currentHashedPassword);
         if (isSamePassword) {
           return res.status(400).json({ message: "New password cannot be the same as the previous password" });
         }
-
-        // Hash new password
+ 
         const hashedPassword = await bcrypt.hash(newPassword, 10);
 
         db.query(
@@ -293,17 +291,14 @@ app.post("/reset-password", async (req, res) => {
     }
   );
 });
-
-
+ 
 app.get("/", (req, res) => {
   res.send("Chat server is running!");
 });
-
-// On client connection (Socket.IO)
+ 
 io.on("connection", (socket) => {
   console.log("A user connected: " + socket.id);
-
-  // Register user or admin when they connect
+ 
   socket.on("register_user", (userId) => {
     users[userId] = socket.id;
     console.log(`User registered: ${userId}`);
@@ -313,22 +308,19 @@ io.on("connection", (socket) => {
     admin[adminId] = socket.id;
     console.log(`Admin registered: ${adminId}`);
   });
-
-  // Handle incoming messages from users or admins
+ 
   socket.on("send_message", (data) => {
     const { senderId, receiverId, senderRole, message } = data;
     
     console.log(`Message from ${senderRole} ${senderId} to ${receiverId}: ${message}`);
-
-    // Check if the receiver is a user or admin, then emit to the corresponding socket ID
+ 
     if (senderRole === "users") {
       io.to(admin[receiverId]).emit("receive_message", message);
     } else if (senderRole === "admin") {
       io.to(users[receiverId]).emit("receive_message", message);
     }
   });
-
-  // Handle disconnecting users or admins
+ 
   socket.on("disconnect", () => {
     for (let userId in users) {
       if (users[userId] === socket.id) {
@@ -345,16 +337,15 @@ io.on("connection", (socket) => {
     console.log("A user or admin disconnected");
   });
 });
-
-// Fetch receiver's socket ID based on their role (either 'user' or 'admin')
+ 
 const getReceiverByRole = (receiverId, senderRole) => {
   return new Promise((resolve, reject) => {
-    const role = senderRole === "users" ? "admin" : "users"; // Get the opposite role
+    const role = senderRole === "users" ? "admin" : "users";
     const query = "SELECT id, socketId FROM users WHERE id = ? AND role = ? LIMIT 1"; 
     db.query(query, [receiverId, role], (err, result) => {
       if (err) return reject(err);
       if (result.length > 0) {
-        resolve(result[0]);  // Return the receiver's socketId
+        resolve(result[0]);  
       } else {
         reject("Receiver not found.");
       }
@@ -404,8 +395,7 @@ const serviceStorage = multer.diskStorage({
 });
 
 const serviceUpload = multer({ storage: serviceStorage });
-
-// Public services (users see ONLY active)
+ 
 app.get("/services", (req, res) => {
   db.query(
     "SELECT * FROM services WHERE status = 'active'",
@@ -420,9 +410,7 @@ app.get("/services", (req, res) => {
     }
   );
 });
-
-
-// Add new service
+ 
 app.post("/admin/services",verifyAdmin,serviceUpload.single("image"),
   (req, res) => {
     const { name, description, price, duration, gender, category } = req.body;
@@ -471,8 +459,7 @@ app.get("/admin/services", verifyAdmin, (req, res) => {
     res.json(results);
   });
 });
-
-// Update service
+ 
 app.put(
   "/admin/services/:id",
   verifyAdmin,
@@ -551,21 +538,20 @@ const verifyUser = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.SECRET_KEY);
-    req.user = decoded; // user info available in req.user
+    req.user = decoded; 
     next();
   } catch {
     res.status(401).json({ message: "Invalid token" });
   }
 };
-
-// Configure multer storage
+ 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, "uploads/"), // folder for uploaded images
   filename: (req, file, cb) => cb(null, `user-${req.user.id}${path.extname(file.originalname)}`)
 });
 const upload = multer({ storage });
 
-// Get user profile
+
 app.get("/profile", verifyUser, (req, res) => {
   const userId = req.user.id;
   db.query(
@@ -579,7 +565,7 @@ app.get("/profile", verifyUser, (req, res) => {
 );
 });
 
-// Update profile
+
 app.put("/profile", verifyUser, (req, res) => {
   const userId = req.user.id;
   const { fullName, phone, address } = req.body;
@@ -599,7 +585,43 @@ app.put("/profile", verifyUser, (req, res) => {
   );
 });
 
-// Change password
+app.post("/google-login", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const [results] = await db.promise().query(
+      "SELECT * FROM users WHERE email = ?",
+      [email]
+    );
+
+    if (results.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const user = results[0];
+
+    // ✅ Generate SAME JWT as normal login
+    const token = jwt.sign(
+      { id: user.id, role: user.role },
+      process.env.SECRET_KEY,
+      { expiresIn: "1d" }
+    );
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        fullName: user.fullName,
+        role: user.role,
+      },
+    });
+  } catch (err) {
+    console.error("Google login error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
 app.put("/profile/change-password", verifyUser, async (req, res) => {
   const userId = req.user.id;
   const { currentPassword, newPassword } = req.body;
@@ -624,8 +646,7 @@ app.put("/profile/change-password", verifyUser, async (req, res) => {
   });
 });
 
-// Endpoint to upload/change profile photo
-// Profile photo upload
+
 app.put("/profile/photo", verifyUser, upload.single("photo"), (req, res) => {
   try {
     if (!req.user || !req.user.id) {
@@ -664,16 +685,11 @@ app.put("/profile/photo", verifyUser, upload.single("photo"), (req, res) => {
     res.status(500).json({ message: "Server error", error: err });
   }
 });
-
-// Create a booking
-// Create a booking (supports multiple services)
+ 
 app.post("/bookings", verifyUser, (req, res) => {
   const { service_ids, booking_date, booking_time, notes, location_type, address } = req.body;
   const user_id = req.user.id;
-  
-  // Log the request body for debugging
-  console.log("Booking Request Body:", req.body);
-
+ 
   if (!service_ids || !Array.isArray(service_ids) || service_ids.length === 0) {
     return res.status(400).json({ message: "At least one service is required" });
   }
@@ -684,36 +700,47 @@ app.post("/bookings", verifyUser, (req, res) => {
     return res.status(400).json({ message: "Location and address are required" });
   }
 
-  // Build values for bulk insert
-  const values = service_ids.map((id) => [
-    user_id,
-    id,
-    booking_date,
-    booking_time,
-    notes || null,
-    "upcoming", // status
-    location_type,
-    address || null
-  ]);
-
-  console.log("Booking Insert Values:", values); // debug log
-
   db.query(
-    `INSERT INTO bookings 
-     (user_id, service_id, booking_date, booking_time, notes, status, location_type, address)
-     VALUES ?`,
-    [values],
-    (err) => {
-      if (err) {
-        console.error("DB Error:", err); // log the error message
-        return res.status(500).json({ message: "DB error", error: err });
+    `SELECT * FROM bookings WHERE user_id = ? AND service_id IN (?) AND status = 'upcoming' AND booking_date = ? AND booking_time = ?`,
+    [user_id, service_ids, booking_date, booking_time],
+    (err, existingBookings) => {
+      if (err) return res.status(500).json({ message: "DB error", error: err });
+      if (existingBookings.length > 0) {
+        return res.status(400).json({ message: "You already have a booking for these services at the same date/time." });
       }
-      res.json({ message: "Booking successful", booking_count: service_ids.length });
+
+      const insertedBookingIds = [];
+
+      const insertNext = (index) => {
+        if (index >= service_ids.length) {
+          return res.json({
+            message: "Booking successful",
+            bookingIds: insertedBookingIds,
+            booking_count: service_ids.length,
+          });
+        }
+
+        const service_id = service_ids[index];
+
+        db.query(
+          `INSERT INTO bookings 
+           (user_id, service_id, booking_date, booking_time, notes, status, location_type, address)
+           VALUES (?, ?, ?, ?, ?, 'upcoming', ?, ?)`,
+          [user_id, service_id, booking_date, booking_time, notes || null, location_type, address || null],
+          (err, result) => {
+            if (err) return res.status(500).json({ message: "DB error", error: err });
+
+            insertedBookingIds.push(result.insertId);
+            insertNext(index + 1); 
+          }
+        );
+      };
+
+      insertNext(0); 
     }
   );
 });
- 
-// Get user's bookings
+  
 app.get("/bookings/my", verifyUser, (req, res) => {
   const user_id = req.user.id;
 
@@ -738,9 +765,6 @@ app.get("/bookings/my", verifyUser, (req, res) => {
   );
 });
 
- 
-
- 
 app.get("/admin/bookings", verifyAdmin, (req, res) => {
   db.query(
     `SELECT b.id, u.fullName AS user, s.name AS service, b.booking_date, b.booking_time, b.notes, b.status, s.price 
@@ -750,7 +774,7 @@ app.get("/admin/bookings", verifyAdmin, (req, res) => {
     (err, results) => {
       if (err) return res.status(500).json({ message: "DB error" });
 
-      console.log("API Bookings Data:", results); // Log results here for debugging
+      console.log("API Bookings Data:", results); 
       res.json(results);
     }
   );
@@ -766,16 +790,11 @@ app.put("/bookings/:id/cancel", verifyUser, (req, res) => {
     }
   );
 });
-
-
-// PUT /bookings/:id/reschedule
-// PUT /bookings/:id/reschedule
-// backend/routes/bookings.js (or wherever your booking routes are)
+ 
 app.put("/bookings/:id/reschedule", (req, res) => {
   const bookingId = req.params.id;
   let { booking_date, booking_time, location_type, reason, address } = req.body;
-
-  // First, fetch the booking
+ 
   db.query(
     "SELECT * FROM bookings WHERE id = ?",
     [bookingId],
@@ -790,8 +809,7 @@ app.put("/bookings/:id/reschedule", (req, res) => {
       }
 
       const booking = results[0];
-
-      // Use existing values if not provided
+ 
       booking_date = booking_date || booking.booking_date;
       booking_time = booking_time || booking.booking_time;
       location_type = location_type || booking.location_type || "salon";
@@ -821,10 +839,9 @@ app.put("/bookings/:id/reschedule", (req, res) => {
 });
 
 app.put('/admin/bookings/:id/status', (req, res) => {
-  const bookingId = req.params.id;  // Get booking ID from URL params
-  const { status } = req.body;      // Get the new status from the request body
-
-  // Check if the booking exists
+  const bookingId = req.params.id; 
+  const { status } = req.body;     
+ 
   db.query('SELECT * FROM bookings WHERE id = ?', [bookingId], (err, rows) => {
     if (err) {
       console.error('Error fetching booking:', err);
@@ -834,8 +851,7 @@ app.put('/admin/bookings/:id/status', (req, res) => {
     if (rows.length === 0) {
       return res.status(404).json({ message: 'Booking not found' });
     }
-
-    // Update the booking status
+ 
     db.query('UPDATE bookings SET status = ? WHERE id = ?', [status, bookingId], (updateErr, result) => {
       if (updateErr) {
         console.error('Error updating booking status:', updateErr);
@@ -846,16 +862,14 @@ app.put('/admin/bookings/:id/status', (req, res) => {
     });
   });
 });
-
-// Get booked time slots for a specific date (duration-aware)
+ 
 app.get("/bookings/booked-slots", (req, res) => {
   const { date } = req.query;
 
   if (!date) {
     return res.status(400).json({ message: "Date is required" });
   }
-
-  // Query all upcoming bookings for the selected date with their durations
+ 
   db.query(
     `SELECT b.booking_time, s.duration AS service_duration
      FROM bookings b
@@ -870,26 +884,109 @@ app.get("/bookings/booked-slots", (req, res) => {
 
       const blockedSlots = [];
 
-      results.forEach((booking) => {
-        // Booking start time
-        let [hour, minute] = booking.booking_time.split(":").map(Number);
-        // Duration in minutes
+      results.forEach((booking) => { 
+        let [hour, minute] = booking.booking_time.split(":").map(Number); 
         const duration = Number(String(booking.service_duration).replace(/\D/g, ""));
-        const slotCount = Math.ceil(duration / 60); // number of 1-hour slots to block
+        const slotCount = Math.ceil(duration / 60); 
 
         for (let i = 0; i < slotCount; i++) {
           const h = hour + i;
           const slotStr = `${h.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
           blockedSlots.push(slotStr);
         }
-      });
-
-      // Remove duplicates if any
+      }); 
       const uniqueBlockedSlots = [...new Set(blockedSlots)];
 
-      res.json(uniqueBlockedSlots); // e.g., ["09:00", "10:00", "15:00"]
+      res.json(uniqueBlockedSlots);
     }
   );
+});
+
+
+app.post("/bookings/:id/feedback", async (req, res) => {
+  const bookingId = req.params.id;
+  const userId = req.user?.id; 
+  const { rating, feedback } = req.body;
+
+  if (!userId) {
+    return res.status(401).json({ message: "Unauthorized: User not logged in" });
+  }
+  if (!rating || !feedback) {
+    return res.status(400).json({ message: "Rating and feedback are required" });
+  }
+  if (rating < 1 || rating > 5) {
+    return res.status(400).json({ message: "Rating must be between 1 and 5" });
+  }
+
+  const connection = await db.promise().getConnection();
+
+  try {
+    await connection.beginTransaction();
+    const [bookingRows] = await connection.query(
+      "SELECT * FROM bookings WHERE id = ?",
+      [bookingId]
+    );
+    if (bookingRows.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    const [existing] = await connection.query(
+      "SELECT * FROM feedback WHERE booking_id = ? AND user_id = ?",
+      [bookingId, userId]
+    );
+    if (existing.length > 0) {
+      await connection.rollback();
+      return res.status(400).json({ message: "Feedback already submitted for this booking" });
+    }
+
+    await connection.query(
+      "INSERT INTO feedback (booking_id, user_id, rating, feedback_text, created_at) VALUES (?, ?, ?, ?, NOW())",
+      [bookingId, userId, rating, feedback]
+    );
+
+    await connection.query(
+      "UPDATE bookings SET feedback_submitted = TRUE WHERE id = ?",
+      [bookingId]
+    );
+
+    await connection.commit();
+    res.json({ message: "Feedback submitted successfully" });
+
+  } catch (err) {
+    await connection.rollback();
+    console.error("Feedback route error:", err.stack || err);
+    res.status(500).json({ message: "Database error occurred", error: err.message });
+  } finally {
+    connection.release();
+  }
+});
+
+app.get("/bookings/:id/feedback", async (req, res) => {
+  const bookingId = req.params.id;
+
+  try {
+    const [rows] = await db.promise().query(
+      `SELECT u.name AS customer, f.rating, f.feedback_text, f.created_at
+       FROM feedback f
+       JOIN users u ON f.user_id = u.id
+       WHERE f.booking_id = ?`,
+      [bookingId]
+    );
+
+    res.json({
+      bookingId,
+      feedbacks: rows.map(f => ({
+        customer: f.customer,
+        rating: f.rating,
+        feedback: f.feedback_text,
+        submittedAt: f.created_at
+      }))
+    });
+  } catch (err) {
+    console.error("Database error:", err);
+    res.status(500).json({ message: "Database error", error: err.message });
+  }
 });
 
 const packageStorage = multer.diskStorage({
@@ -911,16 +1008,14 @@ const packageStorage = multer.diskStorage({
 });
 
 const packageUpload = multer({ storage: packageStorage });
-
-
-// Add new package with multiple services
+ 
 app.post("/admin/packages", verifyAdmin, packageUpload.single("image"), (req, res) => {
   const { name, description, price, duration, status = "active", service_ids } = req.body;
   const image = req.file ? req.file.filename : null;
 
   let servicesArray;
   try {
-    servicesArray = JSON.parse(service_ids); // since frontend sends JSON string
+    servicesArray = JSON.parse(service_ids); 
   } catch {
     return res.status(400).json({ message: "Invalid services format" });
   }
@@ -959,8 +1054,7 @@ app.post("/admin/packages", verifyAdmin, packageUpload.single("image"), (req, re
     }
   );
 });
-
-// Admin: Edit Package - PUT
+ 
 app.put("/admin/packages/:id", verifyAdmin, packageUpload.single("image"), (req, res) => {
 
   console.log("BODY:", req.body);
@@ -981,13 +1075,10 @@ app.put("/admin/packages/:id", verifyAdmin, packageUpload.single("image"), (req,
   } catch (e) {
     return res.status(400).json({ message: "Invalid service_ids format" });
   }
-
-
-  // Build update query
+ 
   let query = "UPDATE packages SET name=?, description=?, price=?, duration=?, status=?";
   let params = [name, description || null, price, duration, "active"];
-
-  // If image uploaded
+ 
   if (req.file) {
     query += ", image=?";
     params.push(req.file.filename);
@@ -1033,8 +1124,7 @@ app.put("/admin/packages/:id", verifyAdmin, packageUpload.single("image"), (req,
     );
   });
 });
-
-// Admin: get all packages with included services
+ 
 app.get("/admin/packages", verifyAdmin, (req, res) => {
   db.query(
     `SELECT p.id, p.name, p.description, p.price, p.duration, p.status, p.image,
@@ -1061,8 +1151,7 @@ app.get("/admin/packages", verifyAdmin, (req, res) => {
     }
   );
 });
-
-// Public packages: only active
+ 
 app.get("/packages", (req, res) => {
   db.query(
     `SELECT p.id, p.name, p.description, p.price, p.duration, p.image,
@@ -1103,8 +1192,7 @@ app.get("/packages/:id", (req, res) => {
     (err, results) => {
       if (err) return res.status(500).json({ message: "DB error", error: err });
       if (results.length === 0) return res.status(404).json({ message: "Package not found" });
-
-      // 'results[0].services' may come as a string, parse it safely
+ 
       if (typeof results[0].services === "string") {
         results[0].services = JSON.parse(results[0].services);
       }
@@ -1124,8 +1212,7 @@ app.put("/admin/packages/:id", verifyAdmin, (req, res) => {
     [name, description || null, price, duration, status, package_id],
     (err) => {
       if (err) return res.status(500).json({ message: "DB error" });
-
-      // Update services: delete old first, then insert new
+ 
       db.query(
         "DELETE FROM package_services WHERE package_id=?",
         [package_id],
@@ -1146,10 +1233,7 @@ app.put("/admin/packages/:id", verifyAdmin, (req, res) => {
     }
   );
 });
-
-
-
-// Admin: get package by ID with included services
+ 
 app.get("/admin/packages/:id", verifyAdmin, (req, res) => {
   const packageId = req.params.id;
 
@@ -1165,8 +1249,7 @@ app.get("/admin/packages/:id", verifyAdmin, (req, res) => {
     (err, results) => {
       if (err) return res.status(500).json({ message: "DB error", error: err });
       if (!results.length) return res.status(404).json({ message: "Package not found" });
-
-      // JSON_ARRAYAGG returns null if no services, so make it an empty array
+ 
       const pkg = results[0];
       if (pkg.services) {
   if (typeof pkg.services === "string") {
@@ -1256,34 +1339,137 @@ app.post("/bookings/package", verifyUser, (req, res) => {
 });
 
 
-  // Example: Get some statistics from your database
+
   app.get("/admin/stats", verifyAdmin, async (req, res) => {
   try {
-    const [userCountResult] = await db.promise().query('SELECT COUNT(id) AS totalUsers FROM users');
-    const totalUsers = userCountResult[0]?.totalUsers || 0;
-
-    const [bookingCountResult] = await db.promise().query('SELECT COUNT(id) AS totalBookings FROM bookings');
-    const totalBookings = bookingCountResult[0]?.totalBookings || 0;
-
-    const [serviceCountResult] = await db.promise().query('SELECT COUNT(id) AS totalServices FROM services');
-    const totalServices = serviceCountResult[0]?.totalServices || 0;
-
-    const [packageCountResult] = await db.promise().query('SELECT COUNT(id) AS totalPackages FROM packages');
-    const totalPackages = packageCountResult[0]?.totalPackages || 0;
+    const [users] = await db.promise().query(`SELECT COUNT(id) AS totalUsers FROM users`);
+    const [bookings] = await db.promise().query(`SELECT COUNT(id) AS totalBookings FROM bookings`);
+    const [services] = await db.promise().query(`SELECT COUNT(id) AS totalServices FROM services`);
+    const [packages] = await db.promise().query(`SELECT COUNT(id) AS totalPackages FROM packages`);
 
     res.json({
-      totalUsers,
-      totalBookings,
-      totalServices,
-      totalPackages
+      totalUsers: users[0]?.totalUsers || 0,
+      totalBookings: bookings[0]?.totalBookings || 0,
+      totalServices: services[0]?.totalServices || 0,
+      totalPackages: packages[0]?.totalPackages || 0,
     });
   } catch (err) {
-    console.error("Error fetching stats", err);
-    res.status(500).json({ message: "Error fetching stats", error: err });
+    console.error(err);
+    res.status(500).json({ message: "Error fetching stats" });
   }
 });
 
+app.get("/admin/monthly-stats", verifyAdmin, async (req, res) => {
+  try {
+    const [rows] = await db.promise().query(`
+      SELECT
+        DATE_FORMAT(booking_date, '%Y-%m') AS month,
+        COUNT(bookings.id) AS bookings,
+        COALESCE(SUM(services.price), 0) AS revenue
+      FROM bookings
+      LEFT JOIN services ON bookings.service_id = services.id
+      GROUP BY YEAR(booking_date), MONTH(booking_date)
+      ORDER BY YEAR(booking_date), MONTH(booking_date)
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error("Error fetching monthly stats:", err);
+    res.status(500).json({ message: "Failed to fetch monthly stats" });
+  }
+});
 
+app.get("/admin/service-categories", verifyAdmin, async (req, res) => {
+  try {
+    const [rows] = await db.promise().query(`
+      SELECT category AS name, COUNT(id) AS value
+      FROM services
+      GROUP BY category
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error("Service category error:", err);
+    res.status(500).json({ message: "Error fetching service categories" });
+  }
+});
+
+app.get("/admin/ai-sentiment", verifyAdmin, (req, res) => {
+  res.json([
+    { sentiment: "positive", count: 12 },
+    { sentiment: "neutral", count: 5 },
+    { sentiment: "negative", count: 3 },
+  ]);
+});
+
+
+app.post("/payment", (req, res) => {
+  const { bookingId, amount, method, status } = req.body;
+
+  const query = `
+    INSERT INTO payments (booking_id, amount, method, status)
+    VALUES (?, ?, ?, ?)
+  `;
+
+  db.query(query, [bookingId, amount, method, status], (err, result) => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({ message: "DB insert failed" });
+    }
+
+    if (status === "success") {
+      db.query(
+        "UPDATE bookings SET status='confirmed' WHERE id=?",
+        [bookingId],
+        (err2) => {
+          if (err2) {
+            console.log(err2);
+            return res.status(500).json({ message: "Booking update failed" });
+          }
+
+          return res.json({ success: true });
+        }
+      );
+    } else {
+      return res.json({ success: false });
+    }
+  });
+});
+
+
+app.patch("/bookings/confirm", verifyUser, (req, res) => {
+  const { bookingIds } = req.body; 
+  const user_id = req.user.id;
+
+  if (!bookingIds || !Array.isArray(bookingIds) || bookingIds.length === 0) {
+    return res.status(400).json({ message: "No booking IDs provided" });
+  }
+  db.query(
+    `UPDATE bookings 
+     SET status = 'confirmed' 
+     WHERE id IN (?) AND user_id = ? AND status = 'upcoming'`,
+    [bookingIds, user_id],
+    (err, result) => {
+      if (err) {
+        console.error("DB Error:", err);
+        return res.status(500).json({ message: "DB error", error: err });
+      }
+
+      if (result.affectedRows === 0) {
+        return res.status(400).json({ message: "No bookings were updated. They may not exist or are already confirmed." });
+      }
+
+      res.json({
+        message: "Bookings confirmed successfully",
+        confirmedCount: result.affectedRows,
+        bookingIds: bookingIds,
+      });
+    }
+  );
+});
+
+// Payments routes
+const paymentsRouter = require("./payments");
+app.use("/payments", paymentsRouter);
+ 
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
 });

@@ -209,7 +209,7 @@ export default function SignupPage() {
       
       setTimeout(() => {
         router.push("/login");
-      }, 2000);
+      }, 1000);
 
     } catch (err) {
       console.error(err);
