@@ -75,8 +75,13 @@ export default function UserDashboard() {
             status: booking.status,
             address: booking.address,
             location_type: booking.location_type || "salon",
-            services: [{ name: booking.service, price: booking.price }],
-            total_amount: booking.price,
+            services: booking.package_id
+  ? [{ name: booking.package_name, price: booking.package_price }]
+  : [{ name: booking.service_name, price: booking.service_price }],
+
+total_amount: booking.package_id
+  ? booking.package_price
+  : booking.service_price,
             feedback_submitted: booking.feedback_submitted || false,
           });
           return acc;
@@ -284,7 +289,10 @@ export default function UserDashboard() {
                   </span>
 
                   <h2 className="text-lg font-semibold text-gray-800 mb-1">
-                    {b.services.map((s) => s.name).join(", ")}
+                    {b.package_id
+  ? `Package: ${b.services[0].name}`
+  : b.services.map((s) => s.name).join(", ")
+}
                   </h2>
                   <p className="text-gray-500 text-sm mb-2">Booking ID: {b.id}</p>
 

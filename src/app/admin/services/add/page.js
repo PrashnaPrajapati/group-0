@@ -76,7 +76,7 @@ export default function AddServicePage() {
       // ✅ Show toast instead of alert
       toast.success("Service added successfully ✅", {
         position: "top-center",
-        autoClose: 2000,
+        autoClose: 1000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,
@@ -95,7 +95,7 @@ export default function AddServicePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#fff7fa] flex justify-center items-start p-6 pt-10 gap-20">
+    <div className="min-h-screen bg-gray-50 flex justify-center items-start p-6 pt-10 gap-20">
       {/* Back button */}
       <div className="flex flex-col justify-start">
         <button
@@ -107,9 +107,11 @@ export default function AddServicePage() {
       </div>
 
       {/* Form container */}
-      <div className="bg-white w-full max-w-lg rounded-xl shadow-sm border p-8">
+      <div className="bg-white w-full max-w-lg rounded-xl shadow-[0_4px_6px_-1px_rgba(236,72,153,0.4),0_2px_4px_-1px_rgba(236,72,153,0.06)] border p-8">
         <h1 className="text-2xl font-bold text-pink-500 mb-6 text-center">
-          Add New Service
+          <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
+            Add New Service
+          </span>
         </h1>
 
         {error && (
@@ -119,60 +121,60 @@ export default function AddServicePage() {
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Service Name */}
           <div>
-            <label className="block text-sm text-gray-900 mb-1">Service Name *</label>
+            <label className="block text-md font-medium text-gray-900 mb-1">Service Name *</label>
             <input
               type="text"
               name="name"
               value={form.name}
               onChange={handleChange} 
-              className="w-full border-2 border-gray-200 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-500"
+              className="w-full border border-gray-400 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
             />
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-sm text-gray-700 mb-1">Description</label>
+            <label className="block text-md font-medium text-gray-900 mb-1">Description</label>
             <textarea
               name="description"
               value={form.description}
               onChange={handleChange}
               rows="3" 
-              className="w-full border-2 border-gray-200 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-500"
+              className="w-full border border-gray-400 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
             />
           </div>
 
           {/* Price */}
           <div>
-            <label className="block text-sm text-gray-700 mb-1">Price (Rs.) *</label>
+            <label className="block text-md font-medium text-gray-900 mb-1">Price (Rs.) *</label>
             <input
               type="number"
               name="price"
               value={form.price}
               onChange={handleChange} 
-              className="w-full border-2 border-gray-200 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-500"
+              className="w-full border border-gray-400 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
             />
           </div>
 
           {/* Duration */}
           <div>
-            <label className="block text-sm text-gray-700 mb-1">Duration *</label>
+            <label className="block text-md font-medium text-gray-900 mb-1">Duration *</label>
             <input
               type="text"
               name="duration"
               value={form.duration}
               onChange={handleChange} 
-              className="w-full border-2 border-gray-200 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-500"
+              className="w-full border border-gray-400 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
             />
           </div>
 
           {/* Gender */}
           <div>
-            <label className="block text-sm text-gray-700 mb-1">Gender *</label>
+            <label className="block text-md font-medium text-gray-900 mb-1">Gender *</label>
             <select
               name="gender"
               value={form.gender}
               onChange={handleChange}
-              className="w-full border-2 border-gray-200 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-500"
+              className="w-full border border-gray-400 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
             >
               <option value="">Select Gender</option>
               <option value="male">Male</option>
@@ -182,12 +184,12 @@ export default function AddServicePage() {
 
           {/* Category */}
           <div>
-            <label className="block text-sm text-gray-700 mb-1">Category *</label>
+            <label className="block text-md font-medium text-gray-900 mb-1">Category *</label>
             <select
               name="category"
               value={form.category}
               onChange={handleChange}
-              className="w-full border-2 border-gray-200 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-500"
+              className="w-full border border-gray-400 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
             >
               <option value="">Select Category</option>
               <option value="hair">Hair</option>
@@ -202,7 +204,7 @@ export default function AddServicePage() {
 
           {/* Image Upload */}
           <div>
-            <label className="block text-sm text-gray-700 mb-1">Image</label>
+            <label className="block text-md font-medium text-gray-900 mb-1">Image</label>
             <div className="flex items-center space-x-4">
               <input
                 type="file"
@@ -213,7 +215,7 @@ export default function AddServicePage() {
               />
               <label
                 htmlFor="serviceImage"
-                className="cursor-pointer px-4 py-2 bg-pink-400 text-white rounded hover:bg-pink-600"
+                className="cursor-pointer px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded hover:bg-pink-600"
               >
                 {image ? "Change Image" : "Choose Image"}
               </label>

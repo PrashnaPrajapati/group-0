@@ -48,7 +48,7 @@ export default function UserServicesPage() {
   }, [search, genderFilter, categoryFilter, services]);
 
   return (
-    <div className="min-h-screen bg-[#fff7fa]">
+    <div className="min-h-screen bg-gray-50">
       <Sidebar />
  
       <div className="flex flex-col min-h-screen md:ml-64">
@@ -57,10 +57,15 @@ export default function UserServicesPage() {
           {/* Header */}
           <div className="text-center mb-6">
             <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-purple-500">
-              Our Services
+              <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
+                Our Services
+              </span>
             </h1>
-            <p className="text-gray-500 mt-2">
-              Discover all our beauty treatments
+            <p className="text-gray-600 font-bold mt-2 text-lg">
+              Discover all our beauty treatments!!
+            </p>
+            <p className="text-gray-600 text-md mt-1">
+              Book your favorite treatments and enjoy a pampering experience anytime.
             </p>
           </div>
 
@@ -92,13 +97,13 @@ export default function UserServicesPage() {
               placeholder="Search services..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="flex-1 p-3 text-gray-700 placeholder-gray-400 border-2 border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-200"
+              className="flex-1 p-3 text-gray-700 placeholder-gray-400 border-2 border-pink-200 rounded focus:outline-none focus:ring-pink-200 focus:border-pink-500"
             />
 
             <select
               value={genderFilter}
               onChange={(e) => setGenderFilter(e.target.value)}
-              className="p-3 text-gray-700 border-2 border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-200"
+              className="pp-3 text-gray-700 border-2 border-pink-200 rounded focus:outline-none focus:ring-pink-200 focus:border-pink-500"
             >
               <option value="all">All Genders</option>
               <option value="male">Male</option>
@@ -108,7 +113,7 @@ export default function UserServicesPage() {
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="p-3 text-gray-700 border-2 border-pink-200 rounded focus:outline-none focus:ring-2 focus:ring-pink-200"
+              className="p-3 text-gray-700 border-2 border-pink-200 rounded focus:outline-none focus:ring-pink-200 focus:border-pink-500"
             >
               <option value="all">All Categories</option>
               <option value="hair">Hair</option>
@@ -121,7 +126,14 @@ export default function UserServicesPage() {
             </select>
 
           </div>
-
+          
+          <div className="mb-6 px-6">
+         <p className="text-gray-600 font-bold text-xl bold mt-1">
+            Explore our range of beauty services designed just for you.
+         </p>
+        </div>
+       
+                       
           {/* SERVICES GRID */}
           {loading ? (
             <p className="text-center text-gray-500">Loading services...</p>
@@ -134,7 +146,7 @@ export default function UserServicesPage() {
               {filteredServices.map((service) => (
                 <div
                   key={service.id}
-                  className="bg-white rounded-xl shadow-sm border overflow-hidden"
+                  className="bg-white rounded-xl shadow-[0_4px_6px_-1px_rgba(236,72,153,0.4),0_2px_4px_-1px_rgba(236,72,153,0.06)] border overflow-hidden"
                 >
                   {service.image && (
                     <img
@@ -143,6 +155,7 @@ export default function UserServicesPage() {
                       className="w-full h-52 object-cover object-center"
                     />
                   )}
+                  
 
                   <div className="p-6">
 

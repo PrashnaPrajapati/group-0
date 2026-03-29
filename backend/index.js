@@ -7,7 +7,9 @@ const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const http = require('http');
 const socketIo = require('socket.io');
+const vader = require('vader-sentiment');
 const db = require("./db");
+const { initializeChat } = require("./chatHandler");
 
 const app = express();
 const port = 5001;
@@ -295,48 +297,10 @@ app.post("/reset-password", async (req, res) => {
 app.get("/", (req, res) => {
   res.send("Chat server is running!");
 });
- 
-io.on("connection", (socket) => {
-  console.log("A user connected: " + socket.id);
- 
-  socket.on("register_user", (userId) => {
-    users[userId] = socket.id;
-    console.log(`User registered: ${userId}`);
-  });
 
-  socket.on("register_admin", (adminId) => {
-    admin[adminId] = socket.id;
-    console.log(`Admin registered: ${adminId}`);
-  });
- 
-  socket.on("send_message", (data) => {
-    const { senderId, receiverId, senderRole, message } = data;
-    
-    console.log(`Message from ${senderRole} ${senderId} to ${receiverId}: ${message}`);
- 
-    if (senderRole === "users") {
-      io.to(admin[receiverId]).emit("receive_message", message);
-    } else if (senderRole === "admin") {
-      io.to(users[receiverId]).emit("receive_message", message);
-    }
-  });
- 
-  socket.on("disconnect", () => {
-    for (let userId in users) {
-      if (users[userId] === socket.id) {
-        delete users[userId];
-        break;
-      }
-    }
-    for (let adminId in admin) {
-      if (admin[adminId] === socket.id) {
-        delete admin[adminId];
-        break;
-      }
-    }
-    console.log("A user or admin disconnected");
-  });
-});
+// Initialize chat system
+initializeChat(io);
+
  
 const getReceiverByRole = (receiverId, senderRole) => {
   return new Promise((resolve, reject) => {
@@ -687,58 +651,75 @@ app.put("/profile/photo", verifyUser, upload.single("photo"), (req, res) => {
 });
  
 app.post("/bookings", verifyUser, (req, res) => {
-  const { service_ids, booking_date, booking_time, notes, location_type, address } = req.body;
+  const { service_ids, package_id, booking_date, booking_time, notes, location_type, address } = req.body;
   const user_id = req.user.id;
- 
-  if (!service_ids || !Array.isArray(service_ids) || service_ids.length === 0) {
-    return res.status(400).json({ message: "At least one service is required" });
-  }
+
+  // ✅ Validate
   if (!booking_date || !booking_time) {
     return res.status(400).json({ message: "Date and time are required" });
   }
+
   if (!location_type || (location_type === "home" && !address)) {
     return res.status(400).json({ message: "Location and address are required" });
   }
 
-  db.query(
-    `SELECT * FROM bookings WHERE user_id = ? AND service_id IN (?) AND status = 'upcoming' AND booking_date = ? AND booking_time = ?`,
-    [user_id, service_ids, booking_date, booking_time],
-    (err, existingBookings) => {
-      if (err) return res.status(500).json({ message: "DB error", error: err });
-      if (existingBookings.length > 0) {
-        return res.status(400).json({ message: "You already have a booking for these services at the same date/time." });
+  // ✅ Must have either service OR package
+  if ((!service_ids || service_ids.length === 0) && !package_id) {
+    return res.status(400).json({ message: "Select at least one service or a package" });
+  }
+
+  // --------------------------
+  // ✅ PACKAGE BOOKING
+  // --------------------------
+  if (package_id) {
+    db.query(
+      `INSERT INTO bookings 
+       (user_id, package_id, booking_date, booking_time, notes, status, location_type, address)
+       VALUES (?, ?, ?, ?, ?, 'upcoming', ?, ?)`,
+      [user_id, package_id, booking_date, booking_time, notes || null, location_type, address || null],
+      (err, result) => {
+        if (err) return res.status(500).json({ message: "DB error", error: err });
+
+        return res.json({
+          message: "Package booking successful",
+          bookingId: result.insertId,
+        });
       }
+    );
 
-      const insertedBookingIds = [];
+    return;
+  }
 
-      const insertNext = (index) => {
-        if (index >= service_ids.length) {
-          return res.json({
-            message: "Booking successful",
-            bookingIds: insertedBookingIds,
-            booking_count: service_ids.length,
-          });
-        }
+  // --------------------------
+  // ✅ SERVICE BOOKING
+  // --------------------------
+  const insertedBookingIds = [];
 
-        const service_id = service_ids[index];
-
-        db.query(
-          `INSERT INTO bookings 
-           (user_id, service_id, booking_date, booking_time, notes, status, location_type, address)
-           VALUES (?, ?, ?, ?, ?, 'upcoming', ?, ?)`,
-          [user_id, service_id, booking_date, booking_time, notes || null, location_type, address || null],
-          (err, result) => {
-            if (err) return res.status(500).json({ message: "DB error", error: err });
-
-            insertedBookingIds.push(result.insertId);
-            insertNext(index + 1); 
-          }
-        );
-      };
-
-      insertNext(0); 
+  const insertNext = (index) => {
+    if (index >= service_ids.length) {
+      return res.json({
+        message: "Booking successful",
+        bookingIds: insertedBookingIds,
+      });
     }
-  );
+
+    const service_id = service_ids[index];
+
+    db.query(
+      `INSERT INTO bookings 
+       (user_id, service_id, booking_date, booking_time, notes, status, location_type, address)
+       VALUES (?, ?, ?, ?, ?, 'upcoming', ?, ?)`,
+      [user_id, service_id, booking_date, booking_time, notes || null, location_type, address || null],
+      (err, result) => {
+        if (err) return res.status(500).json({ message: "DB error", error: err });
+
+        insertedBookingIds.push(result.insertId);
+        insertNext(index + 1);
+      }
+    );
+  };
+
+  insertNext(0);
 });
   
 app.get("/bookings/my", verifyUser, (req, res) => {
@@ -747,15 +728,24 @@ app.get("/bookings/my", verifyUser, (req, res) => {
   db.query(
     `SELECT 
       b.id,
-      s.name AS service,
-      b.booking_date,
+      b.booking_date, 
       b.booking_time,
       b.notes,
       b.status,
-      s.price 
+
+      b.package_id,
+
+      s.name AS service_name,
+      s.price AS service_price,
+
+      p.name AS package_name,
+      p.price AS package_price
+
     FROM bookings b
-    JOIN services s ON b.service_id = s.id
-    WHERE b.user_id = ? AND (b.status = 'upcoming' OR b.status = 'completed' OR b.status = 'cancelled')
+    LEFT JOIN services s ON b.service_id = s.id
+    LEFT JOIN packages p ON b.package_id = p.id
+
+    WHERE b.user_id = ?
     ORDER BY b.id DESC`,
     [user_id],
     (err, results) => {
@@ -767,10 +757,20 @@ app.get("/bookings/my", verifyUser, (req, res) => {
 
 app.get("/admin/bookings", verifyAdmin, (req, res) => {
   db.query(
-    `SELECT b.id, u.fullName AS user, s.name AS service, b.booking_date, b.booking_time, b.notes, b.status, s.price 
+    `SELECT b.id, 
+            u.fullName AS user, 
+            s.name AS service, 
+            p.name AS package, 
+            b.booking_date, 
+            b.booking_time, 
+            b.notes, 
+            b.status, 
+            s.price AS service_price,
+            p.price AS package_price
      FROM bookings b
      JOIN users u ON b.user_id = u.id
-     JOIN services s ON b.service_id = s.id`,
+     LEFT JOIN services s ON b.service_id = s.id
+     LEFT JOIN packages p ON b.package_id = p.id`,
     (err, results) => {
       if (err) return res.status(500).json({ message: "DB error" });
 
@@ -903,62 +903,53 @@ app.get("/bookings/booked-slots", (req, res) => {
 });
 
 
-app.post("/bookings/:id/feedback", async (req, res) => {
+app.post("/bookings/:id/feedback", verifyUser, async (req, res) => {
   const bookingId = req.params.id;
-  const userId = req.user?.id; 
+  const userId = req.user?.id;
   const { rating, feedback } = req.body;
 
   if (!userId) {
     return res.status(401).json({ message: "Unauthorized: User not logged in" });
   }
+
   if (!rating || !feedback) {
     return res.status(400).json({ message: "Rating and feedback are required" });
   }
   if (rating < 1 || rating > 5) {
     return res.status(400).json({ message: "Rating must be between 1 and 5" });
   }
-
-  const connection = await db.promise().getConnection();
-
+ 
   try {
-    await connection.beginTransaction();
-    const [bookingRows] = await connection.query(
+    const [bookingRows] = await db.promise().query(
       "SELECT * FROM bookings WHERE id = ?",
       [bookingId]
     );
-    if (bookingRows.length === 0) {
-      await connection.rollback();
+    if (bookingRows.length === 0) { 
       return res.status(404).json({ message: "Booking not found" });
     }
 
-    const [existing] = await connection.query(
+    const [existing] = await db.promise().query(
       "SELECT * FROM feedback WHERE booking_id = ? AND user_id = ?",
       [bookingId, userId]
     );
-    if (existing.length > 0) {
-      await connection.rollback();
+    if (existing.length > 0) { 
       return res.status(400).json({ message: "Feedback already submitted for this booking" });
     }
 
-    await connection.query(
+    await db.promise().query(
       "INSERT INTO feedback (booking_id, user_id, rating, feedback_text, created_at) VALUES (?, ?, ?, ?, NOW())",
       [bookingId, userId, rating, feedback]
     );
 
-    await connection.query(
+    await db.promise().query(
       "UPDATE bookings SET feedback_submitted = TRUE WHERE id = ?",
       [bookingId]
     );
 
-    await connection.commit();
-    res.json({ message: "Feedback submitted successfully" });
-
-  } catch (err) {
-    await connection.rollback();
+    return res.json({ message: "Feedback submitted successfully" });
+  } catch (err) { 
     console.error("Feedback route error:", err.stack || err);
-    res.status(500).json({ message: "Database error occurred", error: err.message });
-  } finally {
-    connection.release();
+    return res.status(500).json({ message: "Database error occurred", error: err.message });
   }
 });
 
@@ -967,7 +958,7 @@ app.get("/bookings/:id/feedback", async (req, res) => {
 
   try {
     const [rows] = await db.promise().query(
-      `SELECT u.name AS customer, f.rating, f.feedback_text, f.created_at
+      `SELECT u.fullname AS customer, f.rating, f.feedback_text, f.created_at
        FROM feedback f
        JOIN users u ON f.user_id = u.id
        WHERE f.booking_id = ?`,
@@ -983,6 +974,23 @@ app.get("/bookings/:id/feedback", async (req, res) => {
         submittedAt: f.created_at
       }))
     });
+  } catch (err) {
+    console.error("Database error:", err);
+    res.status(500).json({ message: "Database error", error: err.message });
+  }
+});
+
+// Admin list all feedbacks
+app.get("/feedback", verifyAdmin, async (req, res) => {
+  try {
+    const [rows] = await db.promise().query(
+      `SELECT f.booking_id AS bookingId, u.fullname AS customer, f.rating, f.feedback_text AS feedback, f.created_at
+       FROM feedback f
+       JOIN users u ON f.user_id = u.id
+       ORDER BY f.created_at DESC`
+    );
+
+    res.json(rows);
   } catch (err) {
     console.error("Database error:", err);
     res.status(500).json({ message: "Database error", error: err.message });
@@ -1363,18 +1371,28 @@ app.get("/admin/monthly-stats", verifyAdmin, async (req, res) => {
   try {
     const [rows] = await db.promise().query(`
       SELECT
-        DATE_FORMAT(booking_date, '%Y-%m') AS month,
-        COUNT(bookings.id) AS bookings,
-        COALESCE(SUM(services.price), 0) AS revenue
-      FROM bookings
-      LEFT JOIN services ON bookings.service_id = services.id
-      GROUP BY YEAR(booking_date), MONTH(booking_date)
-      ORDER BY YEAR(booking_date), MONTH(booking_date)
+        DATE_FORMAT(b.booking_date, '%Y-%m') AS month,
+        COUNT(b.id) AS bookings,
+        COALESCE(SUM(COALESCE(s.price, 0) + COALESCE(p.price, 0)), 0) AS revenue
+      FROM bookings b
+      LEFT JOIN services s ON b.service_id = s.id
+      LEFT JOIN packages p ON b.package_id = p.id
+      GROUP BY YEAR(b.booking_date), MONTH(b.booking_date)
+      ORDER BY YEAR(b.booking_date), MONTH(b.booking_date)
     `);
+
+    if (!rows || rows.length === 0) {
+      return res.json([]);
+    }
+
     res.json(rows);
   } catch (err) {
     console.error("Error fetching monthly stats:", err);
-    res.status(500).json({ message: "Failed to fetch monthly stats" });
+    res.status(500).json({
+      message: "Failed to fetch monthly stats",
+      error: err?.message || "unknown",
+      stack: err?.stack?.split('\n').slice(0, 3),
+    });
   }
 });
 
@@ -1385,6 +1403,10 @@ app.get("/admin/service-categories", verifyAdmin, async (req, res) => {
       FROM services
       GROUP BY category
     `);
+
+    if (!rows || rows.length === 0) {
+      return res.json([]);
+    }
     res.json(rows);
   } catch (err) {
     console.error("Service category error:", err);
@@ -1392,14 +1414,119 @@ app.get("/admin/service-categories", verifyAdmin, async (req, res) => {
   }
 });
 
-app.get("/admin/ai-sentiment", verifyAdmin, (req, res) => {
-  res.json([
-    { sentiment: "positive", count: 12 },
-    { sentiment: "neutral", count: 5 },
-    { sentiment: "negative", count: 3 },
-  ]);
+app.get("/admin/ai-sentiment", verifyAdmin, async (req, res) => {
+  try {
+    const [feedbackRows] = await db.promise().query(
+      `SELECT feedback_text FROM feedback WHERE feedback_text IS NOT NULL AND TRIM(feedback_text) <> ''`
+    );
+
+    const counts = {
+      positive: 0,
+      neutral: 0,
+      negative: 0,
+    };
+
+    feedbackRows.forEach((row) => {
+      const feedbackText = String(row.feedback_text || "").trim();
+      if (!feedbackText) return;
+
+      try {
+        const sentiment = vader.SentimentIntensityAnalyzer.polarity_scores(feedbackText);
+        const compound = sentiment.compound;
+
+        if (compound >= 0.05) {
+          counts.positive += 1;
+        } else if (compound <= -0.05) {
+          counts.negative += 1;
+        } else {
+          counts.neutral += 1;
+        }
+      } catch (error) {
+        console.error("Error analyzing sentiment for text:", feedbackText, error);
+        // Default to neutral on error
+        counts.neutral += 1;
+      }
+    });
+
+    res.json([
+      { sentiment: "positive", count: counts.positive },
+      { sentiment: "neutral", count: counts.neutral },
+      { sentiment: "negative", count: counts.negative },
+    ]);
+  } catch (err) {
+    console.error("AI sentiment error:", err);
+    res.status(500).json({ message: "Error fetching sentiment data", error: err.message });
+  }
 });
 
+// Admin list detailed feedback with sentiment for AI sentiment page
+app.get("/admin/ai-sentiment-details", verifyAdmin, async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(5, parseInt(req.query.limit, 10) || 10));
+    const offset = (page - 1) * limit;
+    const search = (req.query.search || "").trim();
+
+    let whereClause = "WHERE f.feedback_text IS NOT NULL AND TRIM(f.feedback_text) <> ''";
+    const params = [];
+
+    if (search) {
+      whereClause += " AND (u.fullname LIKE ? OR f.feedback_text LIKE ?)";
+      params.push(`%${search}%`, `%${search}%`);
+    }
+
+    const [countResult] = await db.promise().query(`SELECT COUNT(*) AS total FROM feedback f LEFT JOIN users u ON f.user_id = u.id ${whereClause}`, params);
+    const total = countResult[0]?.total || 0;
+
+    const [feedbackRows] = await db.promise().query(
+      `SELECT f.id, f.booking_id, f.user_id, u.fullname AS customer, f.feedback_text AS feedback, f.rating, f.created_at
+       FROM feedback f
+       LEFT JOIN users u ON f.user_id = u.id
+       ${whereClause}
+       ORDER BY f.created_at DESC
+       LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
+
+    const details = feedbackRows.map((entry) => {
+      const text = (entry.feedback || "").trim();
+      let compound = 0;
+      let label = "neutral";
+      try {
+        const sentimentScores = vader.SentimentIntensityAnalyzer.polarity_scores(text);
+        compound = sentimentScores.compound;
+        if (compound >= 0.05) label = "positive";
+        else if (compound <= -0.05) label = "negative";
+      } catch (e) {
+        console.error("Sentiment analysis error for text:", text, e);
+        // Keep default neutral
+      }
+
+      return {
+        id: entry.id,
+        customer: entry.customer || "Unknown",
+        feedback: text,
+        rating: entry.rating,
+        createdAt: entry.created_at,
+        sentiment: label,
+        sentimentScore: compound,
+      };
+    });
+
+    res.json({
+      data: details,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
+    });
+  } catch (err) {
+    console.error("AI sentiment details error:", err);
+    res.status(500).json({ message: "Error fetching sentiment details", error: err.message });
+  }
+});
 
 app.post("/payment", (req, res) => {
   const { bookingId, amount, method, status } = req.body;
@@ -1439,29 +1566,60 @@ app.patch("/bookings/confirm", verifyUser, (req, res) => {
   const { bookingIds } = req.body; 
   const user_id = req.user.id;
 
+  console.log("Confirm request - user_id:", user_id, "bookingIds:", bookingIds);
+
   if (!bookingIds || !Array.isArray(bookingIds) || bookingIds.length === 0) {
     return res.status(400).json({ message: "No booking IDs provided" });
   }
+  
+  // First check if bookings exist
   db.query(
-    `UPDATE bookings 
-     SET status = 'confirmed' 
-     WHERE id IN (?) AND user_id = ? AND status = 'upcoming'`,
+    `SELECT id, status, user_id FROM bookings WHERE id IN (?) AND user_id = ?`,
     [bookingIds, user_id],
-    (err, result) => {
+    (err, existingBookings) => {
       if (err) {
-        console.error("DB Error:", err);
-        return res.status(500).json({ message: "DB error", error: err });
+        console.error("Check bookings error:", err);
+        return res.status(500).json({ message: "DB error checking bookings", error: err.message });
       }
 
-      if (result.affectedRows === 0) {
-        return res.status(400).json({ message: "No bookings were updated. They may not exist or are already confirmed." });
+      console.log("Found bookings:", existingBookings);
+
+      if (existingBookings.length === 0) {
+        return res.status(400).json({ 
+          message: "No bookings found for these IDs and user",
+          requestedIds: bookingIds,
+          user_id: user_id
+        });
       }
 
-      res.json({
-        message: "Bookings confirmed successfully",
-        confirmedCount: result.affectedRows,
-        bookingIds: bookingIds,
-      });
+      // Now update to confirmed
+      db.query(
+        `UPDATE bookings 
+         SET status = 'confirmed' 
+         WHERE id IN (?) AND user_id = ? AND status = 'upcoming'`,
+        [bookingIds, user_id],
+        (err, result) => {
+          if (err) {
+            console.error("DB Error updating:", err);
+            return res.status(500).json({ message: "DB error updating bookings", error: err.message });
+          }
+
+          console.log("Update result:", result);
+
+          if (result.affectedRows === 0) {
+            return res.status(400).json({ 
+              message: "No bookings were updated. They may not exist, user mismatch, or already confirmed.",
+              existingBookings: existingBookings
+            });
+          }
+
+          res.json({
+            message: "Bookings confirmed successfully",
+            confirmedCount: result.affectedRows,
+            bookingIds: bookingIds,
+          });
+        }
+      );
     }
   );
 });
@@ -1469,9 +1627,49 @@ app.patch("/bookings/confirm", verifyUser, (req, res) => {
 // Payments routes
 const paymentsRouter = require("./payments");
 app.use("/payments", paymentsRouter);
- 
-app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
+
+app.post("/payments/save-transaction", async (req, res) => {
+  const { refId, txnId, amount, bookingIds, status, paymentMethod } = req.body;
+
+  try {
+    const [exists] = await db.promise().query(
+      "SELECT id FROM payments WHERE transaction_id = ?",
+      [txnId]
+    );
+
+    if (exists.length > 0) {
+      return res.json({ message: "Transaction already saved" });
+    }
+
+    await db.promise().query(
+      "INSERT INTO payments (reference_id, transaction_id, amount, status, payment_method, created_at) VALUES (?, ?, ?, ?, ?, NOW())",
+      [refId, txnId, amount, status, paymentMethod]
+    );
+
+    res.json({ message: "Transaction saved successfully" });
+  } catch (err) {
+    console.error("Error saving transaction:", err);
+    res.status(500).json({ message: "Failed to save transaction" });
+  }
 });
+
+// API endpoint for sentiment analysis
+app.post("/api/sentiment", (req, res) => {
+  const { text } = req.body;  // Get text from the request body
+  
+  if (!text) {
+    return res.status(400).json({ message: "Text is required" });
+  }
+
+  const result = analyzeSentiment(text);  // Analyze the sentiment of the text
+  res.json(result);  // Return the sentiment result
+});
+
+ 
+server.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}`);
+  console.log(`Socket.io ready at http://localhost:${port}`);
+});
+
 
 

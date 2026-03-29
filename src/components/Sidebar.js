@@ -7,7 +7,7 @@ import { useState } from "react";
 const menu = [
   { name: "Dashboard", href: "/dashboard" },
   { name: "Services", href: "/services" },
-  { name: "Customize Services", href: "/bookings" },
+  { name: "Bookings", href: "/bookings" },
   { name: "Chat", href: "/chat" }, 
   { name: "Payments", href: "/payments" },
   { name: "Profile", href: "/profile" },

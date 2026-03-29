@@ -26,6 +26,43 @@ export default function AdminDashboard() {
   const [categoryData, setCategoryData] = useState([]);
   const [sentimentData, setSentimentData] = useState([]);
 
+  const ensureAuth = (status) => {
+    if (status === 401 || status === 403) {
+      toast.error("Session expired or unauthorized. Please login again.");
+      localStorage.removeItem("token");
+      localStorage.removeItem("role");
+      router.replace("/login");
+      return false;
+    }
+    return true;
+  };
+
+  const safeFetch = async (url, token) => {
+    try {
+      const res = await fetch(url, { headers: { Authorization: token ? `Bearer ${token}` : "" } });
+
+      if (res.status === 401 || res.status === 403) {
+        ensureAuth(res.status);
+        return [];
+      }
+
+      const json = await res.json().catch(() => null);
+      if (!res.ok) {
+        console.error("safeFetch bad response", url, res.status, json);
+        return [];
+      }
+
+      if (Array.isArray(json)) return json;
+      if (json && Array.isArray(json.data)) return json.data;
+      if (json && typeof json === "object" && Object.keys(json).length === 0) return [];
+
+      return [];
+    } catch (err) {
+      console.error("Fetch error:", err);
+      return [];
+    }
+  };
+
   const [servicesList, setServicesList] = useState([]);
   const [packagesList, setPackagesList] = useState([]);
   const [bookingsList, setBookingsList] = useState([]);
@@ -33,22 +70,6 @@ export default function AdminDashboard() {
 
   const COLORS = ["#ec4899", "#a855f7", "#6366f1", "#14b8a6", "#facc15"];
 
-  const safeFetch = async (url, token) => {
-    try {
-      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-      const text = await res.text();
-      try {
-        const json = JSON.parse(text);
-        return Array.isArray(json) ? json : [];
-      } catch {
-        console.error("❌ Not JSON:", text);
-        return [];
-      }
-    } catch (err) {
-      console.error("Fetch error:", err);
-      return [];
-    }
-  };
 
   const renderPieLabel = (entry, index, data) => {
     const total = data.reduce((sum, item) => sum + (item.value || item.count), 0);
@@ -84,6 +105,10 @@ export default function AdminDashboard() {
         safeFetch("http://localhost:5001/admin/ai-sentiment", token),
       ]);
 
+      console.log("admin monthly stats", monthly);
+      console.log("admin category stats", category);
+      console.log("admin sentiment stats", sentiment);
+
       const coloredCategory = category.map((item, i) => ({ ...item, fill: COLORS[i % COLORS.length] }));
       const coloredSentiment = sentiment.map((item, i) => ({ ...item, fill: COLORS[i % COLORS.length] }));
 
@@ -98,6 +123,7 @@ export default function AdminDashboard() {
         safeFetch("http://localhost:5001/packages", token),
         safeFetch("http://localhost:5001/bookings/my", token),
         safeFetch("http://localhost:5001/feedback", token),
+        
       ]);
 
       // Top 5 for dashboard
@@ -126,7 +152,19 @@ export default function AdminDashboard() {
   return (
     <AdminSidebar>
       <ToastContainer position="top-center" />
-      <div className="p-8 bg-[#fff7fa] min-h-screen space-y-8">
+      <div className="space-y-8">
+  <h1 className="text-4xl font-bold flex items-center gap-3">
+  <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
+    Admin Dashboard
+  </span>
+</h1>
+
+  {/* Stack vertically */}
+  <div className="flex flex-col gap-1 text-gray-600">
+    <p className="text-2xl font-medium">Welcome back, Admin!</p>
+    <p className="text-md">Manage your services, bookings, and analytics</p>
+  </div>
+
 
         {/* Dashboard Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -137,30 +175,38 @@ export default function AdminDashboard() {
         </div>
 
         {/* Dashboard Charts */}
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 gap-8 mt-6">
 
           <ChartCard title="Monthly Bookings">
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={monthlyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Line type="monotone" dataKey="bookings" stroke="#ec4899" strokeWidth={3} />
-              </LineChart>
-            </ResponsiveContainer>
+            {monthlyData.length === 0 ? (
+              <div className="p-6 text-center text-gray-500">No monthly bookings data available.</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={250}>
+                <LineChart data={monthlyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="bookings" stroke="#ec4899" strokeWidth={3} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </ChartCard>
 
           <ChartCard title="Revenue">
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={monthlyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="revenue" fill="#a855f7" />
-              </BarChart>
-            </ResponsiveContainer>
+            {monthlyData.length === 0 ? (
+              <div className="p-6 text-center text-gray-500">No revenue data available yet.</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={monthlyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="revenue" fill="#a855f7" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </ChartCard>
           
 
@@ -194,7 +240,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Tabs */}
-        <div className="bg-gray-100 rounded-full p-2 flex max-w-3xl mt-8 text-gray-600">
+        <div className="bg-gray-100 rounded-full p-2 flex md:w-3/4 mx-auto mt-8 text-gray-600">
           {["services","packages","bookings","feedback"].map(tab => (
             <button
               key={tab}
@@ -208,7 +254,7 @@ export default function AdminDashboard() {
 
         {/* Tab Content */}
         {/* Tab Content */}
-<div className="text-gray-600">
+<div className="text-pink-400">
   {activeTab === "services" && (
     <TabContent title="Top 5 Services" items={servicesList} type="services" />
   )}
@@ -231,7 +277,7 @@ export default function AdminDashboard() {
 // Stats card
 function Card({ title, value }) {
   return (
-    <div className="bg-white p-6 rounded-xl shadow text-center">
+    <div className="bg-white p-6 rounded-xl shadow-[0_4px_6px_-1px_rgba(236,72,153,0.4),0_2px_4px_-1px_rgba(236,72,153,0.06)] text-center">
       <p className="text-gray-500">{title}</p>
       <p className="text-3xl font-bold text-pink-500">{value||0}</p>
     </div>
@@ -255,7 +301,7 @@ function TabContent({ title, items, type }) {
   }
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow mt-6">
+    <div className="bg-white p-6 rounded-xl shadow-[0_4px_6px_-1px_rgba(236,72,153,0.4),0_2px_4px_-1px_rgba(236,72,153,0.06)] mt-6">
       <h3 className="text-xl font-semibold mb-4">{title}</h3>
 
       <div className="overflow-x-auto">
@@ -304,7 +350,7 @@ function TabContent({ title, items, type }) {
                   <td className="p-3 text-gray-600">{item.rating || "-"}</td>
                 </>}
                 {type === "bookings" && <>
-                  <td className="p-3 text-gray-600">{item.service || item.package}</td>
+                  <td className="p-3 text-gray-600">{item.services || item.packages}</td>
                   <td className="p-3 text-gray-600">
                     <select
                       value={item.status}
@@ -334,7 +380,7 @@ function TabContent({ title, items, type }) {
                       <option value="completed">Completed</option>
                     </select>
                   </td>
-                  <td className="p-3 text-gray-600 font-semibold">{item.price || 0}</td>
+                  <td className="p-3 text-gray-600 font-semibold">{item.service_price || item.package_price || 0}</td>
                 </>}
                 {type === "feedback" && <>
                   <td className="p-3 font-medium">{item.customer}</td>

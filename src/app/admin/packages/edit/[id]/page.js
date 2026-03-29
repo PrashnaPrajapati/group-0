@@ -168,26 +168,29 @@ export default function EditPackagePage() {
     );
 
   return (
-    <div className="min-h-screen bg-[#fff7fa] flex">
+    <div className="min-h-screen bg-gray-50 flex">
       <AdminSidebar />
 
-      <main className="flex-1 p-8">
-        <ToastContainer position="top-center" />
+      <main className="flex-1 flex justify-center items-start p-8 pt-10">
+  <ToastContainer position="top-center" />
 
-        <h1 className="text-2xl font-bold text-pink-500 mb-6">
-          Edit Package
-        </h1>
+  <div className="w-full max-w-2xl">
+    <h1 className="text-2xl font-bold text-pink-500 mb-6 text-center">
+      <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
+        Edit Package
+      </span>
+    </h1>
 
-        {error && (
-          <div className="bg-red-100 text-red-600 p-3 rounded mb-4">
-            {error}
-          </div>
-        )}
+    {error && (
+      <div className="bg-red-100 text-red-600 p-3 rounded mb-4">
+        {error}
+      </div>
+    )}
 
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white p-6 rounded-xl shadow-sm max-w-2xl"
-        >
+         <form
+      onSubmit={handleSubmit}
+      className="bg-white p-6 rounded-xl shadow-[0_4px_6px_-1px_rgba(236,72,153,0.4),0_2px_4px_-1px_rgba(236,72,153,0.06)]"
+    >
           {/* Name */}
           <div className="mb-4">
             <label className="block mb-1 font-medium text-black">
@@ -197,7 +200,7 @@ export default function EditPackagePage() {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full border p-2 rounded text-black"
+              className="w-full border border-gray-400 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
             />
           </div>
 
@@ -209,7 +212,7 @@ export default function EditPackagePage() {
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full border p-2 rounded text-black"
+              className="w-full border border-gray-400 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
               rows={3}
             />
           </div>
@@ -223,7 +226,7 @@ export default function EditPackagePage() {
               type="number"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
-              className="w-full border p-2 rounded text-black"
+              className="w-full border border-gray-400 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
             />
           </div>
 
@@ -236,7 +239,7 @@ export default function EditPackagePage() {
               type="number"
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
-              className="w-full border p-2 rounded text-black"
+              className="w-full border border-gray-400 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
             />
           </div>
 
@@ -257,7 +260,7 @@ export default function EditPackagePage() {
 
               <label
                 htmlFor="packageImage"
-                className="cursor-pointer px-4 py-2 bg-pink-400 text-white rounded hover:bg-pink-600"
+                className="cursor-pointer px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded hover:bg-pink-600"
               >
                 {image ? "Change Image" : "Choose Image"}
               </label>
@@ -309,6 +312,7 @@ export default function EditPackagePage() {
             {saving ? "Updating..." : "Update Package"}
           </button>
         </form>
+        </div>
       </main>
     </div>
   );

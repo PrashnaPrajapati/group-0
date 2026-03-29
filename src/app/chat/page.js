@@ -1,31 +1,60 @@
 "use client"; // Mark as a client-side component
 
 import { useState, useEffect } from "react";
-import * as jwt_decode from "jwt-decode"; // Decode JWT token
+import { jwtDecode } from "jwt-decode"; // Decode JWT token
 import Chat from "@/components/Chat";
 
 export default function UserChatPage() {
   const [userId, setUserId] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("authToken"); // Retrieve token from localStorage
+    console.log("🔐 Chat page useEffect running...");
+    
+    const token = localStorage.getItem("token"); // Retrieve token from localStorage
+    
+    console.log("📦 Token from localStorage:", token ? "✅ Found" : "❌ Not found");
+    console.log("🔍 All localStorage keys:", Object.keys(localStorage));
 
     if (token) {
-      const decodedToken = jwt_decode(token); // Decode the JWT token
-      if (decodedToken.role === "users") {
-        setUserId(decodedToken.userId); // Set the user ID if role is 'user'
+      try {
+        console.log("🔓 Attempting to decode token...");
+        const decodedToken = jwtDecode(token); // Decode the JWT token
+        console.log("✅ Token decoded successfully");
+        console.log("📋 Decoded token:", decodedToken);
+        
+        if (decodedToken.role === "users") {
+          console.log("👤 User role confirmed, setting userId:", decodedToken.id);
+          setUserId(decodedToken.id); // Use 'id' from token, not 'userId'
+        } else {
+          console.warn("⚠️ User has admin role, not users role. Role:", decodedToken.role);
+        }
+      } catch (error) {
+        console.error("❌ Error decoding token:", error.message);
+        console.error("Full error:", error);
       }
+    } else {
+      console.warn("⚠️ No auth token found in localStorage");
     }
+    setLoading(false);
   }, []); // Runs once after component mounts
+
+  if (loading) {
+    return <p className="text-center mt-4">Loading...</p>;
+  }
+
+  if (!userId) {
+    return (
+      <div className="text-center mt-8">
+        <p className="text-lg">Please log in to access chat.</p>
+        <p className="text-sm text-gray-500 mt-2"><a href="/login" className="text-blue-500 hover:underline">Go to login</a></p>
+      </div>
+    );
+  }
 
   return (
     <div>
-      <h1 className="text-3xl text-center my-4">User Chat</h1>
-      {userId ? (
-        <Chat userId={userId} isAdmin={false} /> // Only render Chat if userId is set
-      ) : (
-        <p>Loading...</p>
-      )}
+      <Chat userId={userId} isAdmin={false} />
     </div>
   );
 }

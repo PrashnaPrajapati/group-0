@@ -1,66 +1,390 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import io from "socket.io-client";
 
-// Make sure the backend server URL matches where Socket.IO is hosted
-const socket = io("http://localhost:5001"); // Pointing to the correct backend server
+let socket = null;
 
 const Chat = ({ userId, isAdmin }) => {
-  const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
+  const [message, setMessage] = useState("");
+  const [receiverId, setReceiverId] = useState(null);
+  const [usersList, setUsersList] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [onlineUsers, setOnlineUsers] = useState(new Set());
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const messagesEndRef = useRef(null);
+
+  // Auto-scroll to bottom
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   useEffect(() => {
-    // Emitting to the server when a user connects
-    if (isAdmin) {
-      socket.emit("register_admin", userId);  // Admin registration
-    } else {
-      socket.emit("register_user", userId);   // User registration
+    scrollToBottom();
+  }, [messages]);
+
+  // Initialize Socket.io connection
+  useEffect(() => {
+    if (!socket) {
+      socket = io("http://localhost:5001");
     }
 
-    // Listening for incoming messages
-    socket.on("receive_message", (message) => {
-      setMessages((prevMessages) => [...prevMessages, message]);
+    const token = localStorage.getItem("token");
+
+    // Register user/admin with Socket.io
+    if (isAdmin) {
+      socket.emit("register_admin", { adminId: userId, token });
+      // Request list of users to chat with
+      socket.emit("get_users");
+    } else {
+      socket.emit("register_user", { userId, token });
+      // For regular users, default receiver waits until admin list arrives
+      setReceiverId(null);
+    }
+
+    // Listen for message history
+    socket.on("message_history", (data) => {
+      setMessages(data.messages || []);
+      setLoading(false);
     });
 
+    // Listen for currently online admin list (user only)
+    socket.on("admin_list", (data) => {
+      if (!isAdmin && data && Array.isArray(data.adminIds) && data.adminIds.length > 0) {
+        const firstAdmin = data.adminIds[0];
+        console.log("🔔 Setting receiverId to first online admin:", firstAdmin);
+        setReceiverId(firstAdmin);
+
+        // Load history for admin
+        socket.emit("request_history", { conversationUserId: firstAdmin });
+      }
+    });
+
+    // Listen for new incoming messages
+    socket.on("receive_message", (messageData) => {
+      setMessages((prev) => [...prev, messageData]);
+    });
+
+    // Listen for users list (admin only)
+    socket.on("users_list", (data) => {
+      setUsersList(data.users || []);
+      setOnlineUsers(new Set(data.onlineUsers || []));
+      setLoading(false);
+    });
+
+    // Listen for online status updates
+    socket.on("user_online", (data) => {
+      setOnlineUsers((prev) => {
+        const updated = new Set(prev);
+        if (data.isOnline) {
+          updated.add(data.userId);
+        } else {
+          updated.delete(data.userId);
+        }
+        return updated;
+      });
+    });
+
+    // Listen for errors
+    socket.on("error", (errData) => {
+      setError(errData.message || "An error occurred");
+      console.error("Socket error:", errData);
+    });
+
+    // Confirm message was sent
+    socket.on("message_sent", (messageData) => {
+      // Message already added optimistically, update with server confirmation
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.message_text === messageData.message_text && !msg.id
+            ? messageData
+            : msg
+        )
+      );
+    });
+
+    setLoading(false);
+
     return () => {
+      // Cleanup
+      socket.off("message_history");
       socket.off("receive_message");
+      socket.off("users_list");
+      socket.off("error");
+      socket.off("message_sent");
     };
   }, [userId, isAdmin]);
 
+  // Handle user selection (admin only)
+  const handleSelectUser = (user) => {
+    setSelectedUser(user);
+    setReceiverId(user.id);
+    setMessages([]); // Clear messages
+    setLoading(true);
+    
+    // Request message history with this user
+    socket.emit("request_history", { conversationUserId: user.id });
+  };
+
+  // Handle sending message
   const handleSendMessage = () => {
-    if (message.trim()) {
-      const receiverRole = isAdmin ? "users" : "admin"; // Sender and receiver roles
+    if (!message.trim()) {
+      setError("Message cannot be empty");
+      return;
+    }
 
-      socket.emit("send_message", {
-        senderId: userId,
-        receiverId: isAdmin ? "user123" : "admin123", // Example receiver ID
-        senderRole: isAdmin ? "admin" : "users",
-        message: message.trim(),
-      });
+    if (!receiverId) {
+      setError("No receiver selected");
+      return;
+    }
 
-      setMessages((prevMessages) => [...prevMessages, message]);
-      setMessage(""); // Clear message input
+    // Add message optimistically
+    const optimisticMessage = {
+      sender_id: userId,
+      receiver_id: receiverId,
+      sender_role: isAdmin ? "admin" : "users",
+      message_text: message.trim(),
+      is_read: false,
+      created_at: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, optimisticMessage]);
+    
+    // Send to socket
+    console.log("📤 Sending message:", {
+      senderId: userId,
+      receiverId,
+      senderRole: isAdmin ? "admin" : "users",
+      message: message.trim(),
+    });
+
+    socket.emit("send_message", {
+      receiverId,
+      message: message.trim(),
+      senderId: userId,
+      senderRole: isAdmin ? "admin" : "users",
+    });
+
+    // Mark messages as read
+    socket.emit("mark_as_read", { conversationUserId: receiverId });
+
+    setMessage("");
+    setError(null);
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
     }
   };
 
-  return (
-    <div className="chat-container">
-      <div className="messages-list">
-        {messages.map((msg, index) => (
-          <div key={index} className="message">{msg}</div>
-        ))}
+  const formatTime = (dateString) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return "";
+    }
+  };
+
+  // Admin view - show user list and chat
+  if (isAdmin) {
+    return (
+      <div className="flex h-screen bg-gray-100">
+        {/* Users List Sidebar */}
+        <div className="w-1/4 bg-white border-r border-gray-200 overflow-y-auto">
+          <div className="p-4 border-b border-gray-200">
+            <h2 className="text-xl font-bold">Conversations</h2>
+          </div>
+          
+          {loading ? (
+            <div className="p-4 text-center text-gray-500">Loading users...</div>
+          ) : usersList.length === 0 ? (
+            <div className="p-4 text-center text-gray-500">No users available</div>
+          ) : (
+            <div>
+              {usersList.map((user) => (
+                <div
+                  key={user.id}
+                  onClick={() => handleSelectUser(user)}
+                  className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition ${
+                    selectedUser?.id === user.id ? "bg-blue-50 border-l-4 border-l-blue-500" : ""
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-800">{user.fullName}</p>
+                      <p className="text-sm text-gray-500">{user.gender}</p>
+                    </div>
+                    {onlineUsers.has(user.id) && (
+                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Chat Area */}
+        <div className="w-3/4 flex flex-col bg-white">
+          {selectedUser ? (
+            <>
+              {/* Chat Header */}
+              <div className="p-4 border-b border-gray-200 bg-gray-50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-bold">{selectedUser.fullName}</h2>
+                    <p className="text-sm text-gray-500">
+                      {onlineUsers.has(selectedUser.id) ? (
+                        <span className="text-green-600">● Online</span>
+                      ) : (
+                        <span className="text-gray-500">● Offline</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {loading ? (
+                  <div className="text-center text-gray-500">Loading messages...</div>
+                ) : messages.length === 0 ? (
+                  <div className="text-center text-gray-500">No messages yet. Start a conversation!</div>
+                ) : (
+                  messages.map((msg, index) => (
+                    <div
+                      key={index}
+                      className={`flex ${msg.sender_id === userId ? "justify-end" : "justify-start"}`}
+                    >
+                      <div
+                        className={`max-w-xs px-4 py-2 rounded-lg ${
+                          msg.sender_id === userId
+                            ? "bg-blue-500 text-white"
+                            : "bg-gray-200 text-gray-800"
+                        }`}
+                      >
+                        <p className="break-words">{msg.message_text}</p>
+                        <p className={`text-xs mt-1 ${
+                          msg.sender_id === userId ? "text-blue-100" : "text-gray-500"
+                        }`}>
+                          {formatTime(msg.created_at)}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Error Message */}
+              {error && (
+                <div className="px-4 py-2 bg-red-100 text-red-700 border border-red-300 rounded">
+                  {error}
+                </div>
+              )}
+
+              {/* Input Area */}
+              <div className="p-4 border-t border-gray-200 bg-gray-50">
+                <div className="flex gap-2">
+                  <textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Type your message..."
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows="3"
+                  />
+                  <button
+                    onClick={handleSendMessage}
+                    className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition font-semibold min-w-fit"
+                  >
+                    Send
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-gray-500">
+              <p>Select a user to start chatting</p>
+            </div>
+          )}
+        </div>
       </div>
-      <div className="input-container">
-        <input
-          type="text"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              handleSendMessage();
-            }
-          }}
-        />
-        <button onClick={handleSendMessage}>Send</button>
+    );
+  }
+
+  // User view - chat with admin
+  return (
+    <div className="flex flex-col h-screen bg-white">
+      {/* Header */}
+      <div className="p-4 border-b border-gray-200 bg-gray-50">
+        <h2 className="text-lg font-bold">Chat with Admin</h2>
+        <p className="text-sm text-gray-500">Get help with your bookings and services</p>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {loading ? (
+          <div className="text-center text-gray-500">Loading messages...</div>
+        ) : messages.length === 0 ? (
+          <div className="text-center text-gray-500">No messages yet. Send a message to get started!</div>
+        ) : (
+          messages.map((msg, index) => (
+            <div
+              key={index}
+              className={`flex ${msg.sender_id === userId ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                className={`max-w-xs px-4 py-2 rounded-lg ${
+                  msg.sender_id === userId
+                    ? "bg-blue-500 text-white"
+                    : "bg-gray-200 text-gray-800"
+                }`}
+              >
+                <p className="break-words">{msg.message_text}</p>
+                <p className={`text-xs mt-1 ${
+                  msg.sender_id === userId ? "text-blue-100" : "text-gray-500"
+                }`}>
+                  {formatTime(msg.created_at)}
+                </p>
+              </div>
+            </div>
+          ))
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="px-4 py-2 bg-red-100 text-red-700 border border-red-300 rounded">
+          {error}
+        </div>
+      )}
+
+      {/* Input Area */}
+      <div className="p-4 border-t border-gray-200 bg-gray-50">
+        <div className="flex gap-2">
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Type your message..."
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+            rows="3"
+          />
+          <button
+            onClick={handleSendMessage}
+            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition font-semibold min-w-fit"
+          >
+            Send
+          </button>
+        </div>
       </div>
     </div>
   );

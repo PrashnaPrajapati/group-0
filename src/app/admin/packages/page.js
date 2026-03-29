@@ -114,7 +114,7 @@ export default function AdminPackagesPage() {
     return <div className="p-10 text-center text-gray-500">Loading packages...</div>;
 
   return (
-    <div className="min-h-screen bg-[#fff7fa] flex">
+    <div className="min-h-screen bg-gray-50 flex">
       <AdminSidebar />
 
       <main className="flex-1 p-8">
@@ -129,9 +129,21 @@ export default function AdminPackagesPage() {
             ← Back
           </button>
 
-          <h1 className="text-2xl font-bold text-pink-500 text-center flex-1">
-            Packages
-          </h1>
+            <div className="text-center mb-6">
+  <h1 className="text-3xl font-bold">
+    <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
+      Package Management
+    </span>
+  </h1>
+
+  <p className="text-gray-500 mt-2">
+    Manage all available packages in one place
+  </p>
+  <p className="text-gray-500 text-md mt-1">
+    Add new packages, update details, control pricing, duration, and linked services efficiently
+  </p>
+  
+</div>
 
           <button
             onClick={() => router.push("/admin/packages/add")}
@@ -142,7 +154,7 @@ export default function AdminPackagesPage() {
         </div>
 
         {/* Table */}
-        <div className="bg-white shadow-sm rounded-xl overflow-x-auto border">
+        <div className="bg-white shadow-[0_4px_6px_-1px_rgba(236,72,153,0.4),0_2px_4px_-1px_rgba(236,72,153,0.06)] rounded-xl overflow-x-auto border">
           <table className="w-full text-sm">
             <thead className="bg-pink-50 text-gray-700">
               <tr>

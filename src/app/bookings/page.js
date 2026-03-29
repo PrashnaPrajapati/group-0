@@ -9,15 +9,20 @@ export default function BookingsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const serviceIdFromQuery = Number(searchParams.get("serviceId") || 0);
+  const packageIdFromQuery = Number(searchParams.get("packageId") || 0);
 
   const [services, setServices] = useState([]);
   const [packages, setPackages] = useState([]);
 
-  const [bookingType, setBookingType] = useState("service"); // service or package
+  const [bookingType, setBookingType] = useState(
+    packageIdFromQuery ? "package" : "service"
+  ); // service or package
   const [selectedServices, setSelectedServices] = useState(
     serviceIdFromQuery ? [serviceIdFromQuery] : []
   );
-  const [selectedPackage, setSelectedPackage] = useState(null);
+  const [selectedPackage, setSelectedPackage] = useState(
+    packageIdFromQuery || null
+  );
 
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
@@ -65,8 +70,9 @@ export default function BookingsPage() {
   };
 
   const handlePackageClick = (id) => {
-    setSelectedPackage(id === selectedPackage ? null : id);
-  };
+  if(packageIdFromQuery) return; // Do nothing if coming from package page
+  setSelectedPackage(id === selectedPackage ? null : id);
+};
 
   const handleSubmit = async (e) => {
   e.preventDefault();
@@ -87,14 +93,17 @@ export default function BookingsPage() {
 
   try {
     const requestBody = {
-      package_id: bookingType === "package" ? selectedPackage : null,
-      service_ids: selectedServices.map(Number),
-      booking_date: date,
-      booking_time: time,
-      location_type: locationType,
-      address: locationType === "home" ? address.trim() : "",
-      notes: notes.trim(),
-    };
+  package_id: bookingType === "package" ? selectedPackage : null,
+  service_ids:
+    bookingType === "service"
+      ? selectedServices.map(Number)
+      : selectedPackageObject?.services.map((s) => s.id) || [],
+  booking_date: date,
+  booking_time: time,
+  location_type: locationType,
+  address: locationType === "home" ? address.trim() : "",
+  notes: notes.trim(),
+};
 
     const res = await fetch("http://localhost:5001/bookings", {
       method: "POST",
@@ -108,8 +117,8 @@ export default function BookingsPage() {
     const data = await res.json();
     if (!res.ok) return setErrorMessage(data.message || "Booking failed");
 
-    // Redirect to payment page with bookingIds and totalPrice
-    const bookingIdsParam = data.bookingIds ? data.bookingIds.join(",") : data.bookingId;
+    
+   const bookingIdsParam = data.bookingIds ? data.bookingIds.join(",") : data.bookingId;
     router.push(`/payments?bookingIds=${bookingIdsParam}&totalPrice=${totalPrice}`);
 
     // Reset form (optional)
@@ -177,14 +186,24 @@ export default function BookingsPage() {
               {/* Toggle buttons */}
               <div className="mb-4 flex gap-4">
                 <button
-                  onClick={() => setBookingType("service")}
-                  className={`px-4 py-2 rounded ${
-                    bookingType === "service"
-                      ? "bg-pink-500 text-white"
-                      : "bg-gray-200"
-                  }`}
-                >
-                  Services
+                    onClick={() => !packageIdFromQuery && setBookingType("service")}
+                    className={`px-4 py-2 rounded ${
+                      bookingType === "service"
+                        ? "bg-pink-500 text-white"
+                        : "bg-gray-200 text-gray-800"
+                    }`}
+                  >
+                    Services
+                  </button>
+                  <button
+                    onClick={() => !packageIdFromQuery && setBookingType("package")}
+                    className={`px-4 py-2 rounded ${
+                      bookingType === "package"
+                        ? "bg-pink-500 text-white"
+                        : "bg-gray-200 text-gray-800"
+                    }`}
+                  >
+                  Packages
                 </button>
               
               </div>
@@ -220,24 +239,26 @@ export default function BookingsPage() {
                     ))}
 
                 {bookingType === "package" &&
-                  packages.map((p) => (
-                    <div
-                      key={p.id}
-                      onClick={() => handlePackageClick(p.id)}
-                      className={`p-5 rounded-xl border cursor-pointer transition-all duration-300 ${
-                        selectedPackage === p.id
-                          ? "border-pink-500 bg-gradient-to-r from-pink-100 to-purple-100 shadow-lg scale-[1.02]"
-                          : "bg-white border-gray-200 hover:shadow-md hover:scale-[1.01]"
-                      }`}
-                    >
-                      <h3 className="text-lg font-semibold text-gray-800 mb-1">{p.name}</h3>
-                      <p className="text-sm text-gray-600 mb-3">{p.description}</p>
-                      <div className="flex justify-between text-sm font-semibold text-pink-500">
-                        <span>Rs. {Number(p.price).toFixed(2)}</span>
-                        <span>{p.services.length} services</span>
-                      </div>
+                  packages
+                  .filter(p => packageIdFromQuery ? p.id === packageIdFromQuery : true)
+                  .map((p) => (
+                  <div
+                    key={p.id}
+                    onClick={() => !packageIdFromQuery && handlePackageClick(p.id)}
+                    className={`p-5 rounded-xl border cursor-pointer transition-all duration-300 ${
+                      selectedPackage === p.id
+                        ? "border-pink-500 bg-gradient-to-r from-pink-100 to-purple-100 shadow-lg scale-[1.02]"
+                        : "bg-white border-gray-200 hover:shadow-md hover:scale-[1.01]"
+                    }`}
+                  >
+                    <h3 className="text-lg font-semibold text-gray-800 mb-1">{p.name}</h3>
+                    <p className="text-sm text-gray-600 mb-3">{p.description}</p>
+                    <div className="flex justify-between text-sm font-semibold text-pink-500">
+                      <span>Rs. {Number(p.price).toFixed(2)}</span>
+                      <span>{p.services.length} services</span>
                     </div>
-                  ))}
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -247,24 +268,42 @@ export default function BookingsPage() {
                 <div className="mb-4 p-2 bg-red-100 text-red-700 rounded">{errorMessage}</div>
               )}
 
-              <h2 className="text-xl font-semibold mb-6 text-gray-800">Selected Services</h2>
+              <h2 className="text-xl font-semibold mb-6 text-gray-800">
+  {bookingType === "service" ? "Selected Services" : "Selected Package"}
+</h2>
 
-              {selectedServiceObjects.length > 0 ? (
-                <ul className="mb-6 text-gray-700 space-y-1">
-                  {selectedServiceObjects.map((s) => (
-                    <li key={s.id} className="flex justify-between">
-                      <span>{s.name}</span>
-                      <span>Rs. {Number(s.price).toFixed(2)}</span>
-                    </li>
-                  ))}
-                  <li className="font-semibold flex justify-between pt-2 border-t border-gray-300">
-                    <span>Total:</span>
-                    <span>Rs. {totalPrice.toFixed(2)}</span>
-                  </li>
-                </ul>
-              ) : bookingType === "service" ? (
-                <p className="mb-6 text-gray-500">No service selected</p>
-              ) : null}
+{bookingType === "service" ? (
+  selectedServiceObjects.length > 0 ? (
+    <ul className="mb-6 text-gray-700 space-y-1">
+      {selectedServiceObjects.map((s) => (
+        <li key={s.id} className="flex justify-between">
+          <span>{s.name}</span>
+          <span>Rs. {Number(s.price).toFixed(2)}</span>
+        </li>
+      ))}
+      <li className="font-semibold flex justify-between pt-2 border-t border-gray-300">
+        <span>Total:</span>
+        <span>Rs. {totalPrice.toFixed(2)}</span>
+      </li>
+    </ul>
+  ) : (
+    <p className="mb-6 text-gray-500">No service selected</p>
+  )
+) : selectedPackageObject ? (
+  <ul className="mb-6 text-gray-700 space-y-1">
+    <li className="flex justify-between">
+      <span>{selectedPackageObject.name}</span>
+      <span>Rs. {Number(selectedPackageObject.price).toFixed(2)}</span>
+    </li>
+
+    <li className="font-semibold flex justify-between pt-2 border-t border-gray-300">
+      <span>Total:</span>
+      <span>Rs. {Number(selectedPackageObject.price).toFixed(2)}</span>
+    </li>
+  </ul>
+) : (
+  <p className="mb-6 text-gray-500">No package selected</p>
+)}
 
               <form>
                 <fieldset className="mb-6">
@@ -357,74 +396,85 @@ export default function BookingsPage() {
             </div>
 
             {/* RIGHT SIDE – Booking Summary */}
-            <form
-              onSubmit={handleSubmit}
-              className="w-2/6 bg-white p-6 rounded-xl shadow-lg sticky top-24"
-            >
-              <h2 className="text-xl font-semibold mb-6 text-gray-800">Booking Summary</h2>
+            {/* RIGHT SIDE – Booking Summary */}
+<form
+  onSubmit={handleSubmit}
+  className="w-2/6 bg-white p-6 rounded-xl shadow-lg sticky top-24"
+>
+  <h2 className="text-xl font-semibold mb-6 text-gray-800">Booking Summary</h2>
 
-              <div className="text-gray-700 space-y-3 mb-6">
-                <div className="flex justify-between">
-                  <span>Service</span>
-                  <span className="font-semibold">
-                    {bookingType === "service"
-                      ? selectedServiceObjects.length > 0
-                        ? selectedServiceObjects.map((s) => s.name).join(", ")
-                        : "-"
-                      : selectedPackageObject?.name || "-"}
-                  </span>
-                </div>
+  <div className="text-gray-700 space-y-3 mb-6">
+    <div className="flex justify-between">
+      <span>Service / Package</span>
+      <span className="font-semibold">
+        {bookingType === "service"
+          ? selectedServiceObjects.length > 0
+            ? selectedServiceObjects.map((s) => s.name).join(", ")
+            : "-"
+          : selectedPackageObject
+          ? selectedPackageObject.name
+          : "-"}
+      </span>
+    </div>
 
-                <div className="flex justify-between">
-                  <span>Duration</span>
-                  <span className="font-semibold">{totalDuration} mins</span>
-                </div>
+    <div className="flex justify-between">
+      <span>Duration</span>
+      <span className="font-semibold">{totalDuration} mins</span>
+    </div>
 
-                <div className="flex justify-between">
-                  <span>Date</span>
-                  <span className="font-semibold">{date || "-"}</span>
-                </div>
+    <div className="flex justify-between">
+      <span>Date</span>
+      <span className="font-semibold">{date || "-"}</span>
+    </div>
 
-                <div className="flex justify-between">
-                  <span>Time</span>
-                  <span className="font-semibold">{time || "-"}</span>
-                </div>
+    <div className="flex justify-between">
+      <span>Time</span>
+      <span className="font-semibold">{time || "-"}</span>
+    </div>
 
-                <div className="flex justify-between">
-                  <span>Location</span>
-                  <span className="font-semibold">
-                    {locationType === "home"
-                      ? "Home"
-                      : locationType === "salon"
-                      ? "Salon"
-                      : "-"}
-                  </span>
-                </div>
-              </div>
+    <div className="flex justify-between">
+      <span>Location</span>
+      <span className="font-semibold">
+        {locationType === "home"
+          ? "Home"
+          : locationType === "salon"
+          ? "Salon"
+          : "-"}
+      </span>
+    </div>
+  </div>
 
-              <hr className="mb-6 border-gray-300" />
+  <hr className="mb-6 border-gray-300" />
 
-              <div className="flex justify-between text-lg font-bold text-pink-500 mb-6">
-                <span>Total</span>
-                <span>Rs. {totalPrice.toFixed(2)}</span>
-              </div>
+  {/* Total Price */}
+  <div className="flex justify-between text-lg font-bold text-pink-500 mb-6">
+    <span>Total</span>
+    <span>
+  Rs.{" "}
+  {bookingType === "service"
+    ? totalPrice.toFixed(2)
+    : selectedPackageObject
+    ? Number(selectedPackageObject.price).toFixed(2)
+    : "0.00"}
+</span>
+  </div>
 
-              <button
-                type="submit"
-                disabled={
-                  loading ||
-                  (bookingType === "service" && selectedServices.length === 0) ||
-                  (bookingType === "package" && !selectedPackage) ||
-                  !date?.trim() ||
-                  !time?.trim() ||
-                  !locationType?.trim() ||
-                  (locationType === "home" && !address?.trim())
-                }
-                className="w-full py-2 text-white rounded-full bg-gradient-to-r from-pink-500 to-purple-500 hover:scale-105 transition"
-              >
-                {loading ? "Booking..." : "Proceed to Payment"}
-              </button>
-            </form>
+  <button
+    type="submit"
+    disabled={
+      loading ||
+      (bookingType === "service" && selectedServices.length === 0) ||
+      (bookingType === "package" && !selectedPackage) ||
+      !date?.trim() ||
+      !time?.trim() ||
+      !locationType?.trim() ||
+      (locationType === "home" && !address?.trim())
+    }
+    className="w-full py-2 text-white rounded-full bg-gradient-to-r from-pink-500 to-purple-500 hover:scale-105 transition"
+  >
+    {loading ? "Booking..." : "Proceed to Payment"}
+  </button>
+</form>
           </div>
         </main>
 

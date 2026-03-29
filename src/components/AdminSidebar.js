@@ -7,7 +7,7 @@ const menu = [
   { name: "Dashboard", href: "/admin/dashboard" },
   { name: "Services", href: "/admin/services" },
   { name: "Packages", href: "/admin/packages" },
-  { name: "AI Sentiments", href: "/admin/aisentiments" },
+  { name: "AI Sentiments", href: "/admin/ai-sentiment" },
   { name: "Chat", href: "/admin/chat" },
   { name: "Bookings", href: "/admin/bookings" },
 ];
