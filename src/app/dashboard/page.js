@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
  
 function parseJwt(token) {
   try {
@@ -61,22 +63,25 @@ export default function UserDashboard() {
         const groupedBookings = data.reduce((acc, booking) => {
           const status = booking.status.toLowerCase();
           if (!acc[status]) acc[status] = [];
-          acc[status].push({
-            id: booking.id,
-            booking_date: booking.booking_date,
-            booking_time: booking.booking_time,
-            status: booking.status,
-            address: booking.address,
-            location_type: booking.location_type || "salon",
-            services: booking.package_id
-              ? [{ name: booking.package_name, price: booking.package_price }]
-              : [{ name: booking.service_name, price: booking.service_price }],
+          const existing = acc[status].some((item) => item.id === booking.id);
+          if (!existing) {
+            acc[status].push({
+              id: booking.id,
+              booking_date: booking.booking_date,
+              booking_time: booking.booking_time,
+              status: booking.status,
+              address: booking.address,
+              location_type: booking.location_type || "salon",
+              services: booking.package_id
+                ? [{ name: booking.package_name, price: booking.package_price }]
+                : [{ name: booking.service_name, price: booking.service_price }],
 
-            total_amount: booking.package_id
-              ? booking.package_price
-              : booking.service_price,
-            feedback_submitted: booking.feedback_submitted || false,
-          });
+              total_amount: booking.package_id
+                ? booking.package_price
+                : booking.service_price,
+              feedback_submitted: booking.feedback_submitted || false,
+            });
+          }
           return acc;
         }, { upcoming: [], completed: [], cancelled: [] });
 
@@ -137,7 +142,7 @@ export default function UserDashboard() {
       });
 
       const data = await res.json();
-      if (!res.ok) return alert(data.message || "Reschedule failed");
+      if (!res.ok) return toast.error(data.message || "Reschedule failed");
  
       setBookings(prev => ({
         ...prev,
@@ -182,6 +187,7 @@ export default function UserDashboard() {
  
       setBookings(prev => {
         const updatedBookings = { ...prev };
+        updatedBookings.cancelled = updatedBookings.cancelled.filter((b) => b.id !== currentBooking.id);
         updatedBookings.cancelled.push({ ...currentBooking, status: "cancelled" });
         updatedBookings[activeTab] = updatedBookings[activeTab].filter(b => b.id !== currentBooking.id);
         return updatedBookings;
@@ -268,8 +274,8 @@ export default function UserDashboard() {
             <p className="text-gray-500">No {activeTab} bookings found.</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredBookings.map((b) => (
-                <div key={b.id} className="bg-white p-5 rounded-xl shadow hover:shadow-lg transition relative">
+              {filteredBookings.map((b, index) => (
+                <div key={`${b.id}-${activeTab}-${index}`} className="bg-white p-5 rounded-xl shadow hover:shadow-lg transition relative">
                   <span className={`absolute top-3 right-3 px-3 py-1 text-sm font-semibold rounded-full ${b.status === "upcoming" ? "bg-blue-100 text-blue-600" : b.status === "completed" ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"}`}>
                     {b.status.charAt(0).toUpperCase() + b.status.slice(1)}
                   </span>
@@ -321,7 +327,8 @@ export default function UserDashboard() {
                 <label className="text-gray-700 block mb-2">New Date</label>
                 <input
                   type="date"
-                  value={newDate}
+                  value={newDate}                  
+                  min={new Date().toISOString().split('T')[0]}                  
                   onChange={(e) => {
                     setNewDate(e.target.value);
                     fetch(`http://localhost:5001/bookings/booked-slots?date=${e.target.value}`)
@@ -523,7 +530,8 @@ export default function UserDashboard() {
             </div>
           )}
         </main>
-        <Footer /> 
+        <Footer />
+        <ToastContainer position="top-center" />
       </div>
     </div>
   );

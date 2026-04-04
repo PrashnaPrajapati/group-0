@@ -152,7 +152,7 @@ export default function AiSentimentPage() {
                   setSearch(e.target.value);
                   setPage(1);
                 }}
-                className="px-3 py-2 border rounded-md w-60"
+                className="px-3 py-2 border rounded-md w-60 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-300"
               />
               <span className="text-sm text-gray-500">Total page entries: {feedbackData.length}</span>
             </div>
@@ -165,7 +165,7 @@ export default function AiSentimentPage() {
                   setLimit(Number(e.target.value));
                   setPage(1);
                 }}
-                className="px-2 py-1 border rounded-md"
+                className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none "
               >
                 {[10, 20, 50, 100].map((value) => (
                   <option key={value} value={value}>

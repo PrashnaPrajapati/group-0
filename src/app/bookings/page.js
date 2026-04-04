@@ -341,6 +341,7 @@ export default function BookingsPage() {
                   <input
                     type="date"
                     value={date}
+                    min={new Date().toISOString().split('T')[0]}
                     onChange={(e) => setDate(e.target.value)}
                     className="w-full p-2 border border-gray-300 rounded text-gray-700"
                   />

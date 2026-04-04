@@ -174,24 +174,26 @@ const handlePrevPage = () => {
                   </td>
 
                   <td className="py-3 px-5">
-  <select
-    value={b.status}
-    onChange={(e) => { 
-      if (b.status !== 'cancelled' || e.target.value !== 'cancelled') {
-        handleStatusChange(b.id, e.target.value);
-      }
-    }}
-    className={`border rounded px-2 py-1 bg-white focus:outline-none focus:ring-2 ${
-      b.status === "upcoming"
-        ? "text-blue-600 border-blue-200 focus:ring-blue-300"
-        : b.status === "completed"
-        ? "text-green-600 border-green-200 focus:ring-green-300"
-        : "text-red-600 border-red-200 focus:ring-red-300"
-    }`}
-  >
-    <option value="upcoming">Upcoming</option>
-    <option value="completed">Completed</option> 
-  </select>
+  {b.status === 'upcoming' ? (
+    <select
+      value={b.status}
+      onChange={(e) => handleStatusChange(b.id, e.target.value)}
+      className="border rounded px-2 py-1 bg-white focus:outline-none focus:ring-2 text-blue-600 border-blue-200 focus:ring-blue-300"
+    >
+      <option value="upcoming">Upcoming</option>
+      <option value="completed">Completed</option>
+    </select>
+  ) : (
+    <span
+      className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold ${
+        b.status === 'completed'
+          ? 'bg-green-100 text-green-700'
+          : 'bg-red-100 text-red-700'
+      }`}
+    >
+      {b.status.charAt(0).toUpperCase() + b.status.slice(1)}
+    </span>
+  )}
 </td>
 
                   <td className="py-3 px-5 font-semibold text-green-600">

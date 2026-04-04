@@ -121,12 +121,11 @@ export default function AdminDashboard() {
       const [services, packages, bookings, feedback] = await Promise.all([
         safeFetch("http://localhost:5001/services", token),
         safeFetch("http://localhost:5001/packages", token),
-        safeFetch("http://localhost:5001/bookings/my", token),
+        safeFetch("http://localhost:5001/admin/bookings", token),
         safeFetch("http://localhost:5001/feedback", token),
         
       ]);
-
-      // Top 5 for dashboard
+ 
       setServicesList(services
         .sort((a,b) => (b.rating || 0) - (a.rating || 0))
         .slice(0,5)
@@ -172,7 +171,7 @@ export default function AdminDashboard() {
         </div> 
         <div className="grid md:grid-cols-2 gap-8 mt-6">
 
-          <ChartCard title="Monthly Bookings">
+          <ChartCard title={<span style={{ color: '#000000' }}>Monthly Bookings</span>}>
             {monthlyData.length === 0 ? (
               <div className="p-6 text-center text-gray-500">No monthly bookings data available.</div>
             ) : (
@@ -188,7 +187,7 @@ export default function AdminDashboard() {
             )}
           </ChartCard>
 
-          <ChartCard title="Revenue">
+          <ChartCard title={<span style={{ color: '#000000' }}>Revenue</span>}>
             {monthlyData.length === 0 ? (
               <div className="p-6 text-center text-gray-500">No revenue data available yet.</div>
             ) : (
@@ -204,7 +203,7 @@ export default function AdminDashboard() {
             )}
           </ChartCard>
           
-          <ChartCard title="Service Category Distribution">
+          <ChartCard title={<span style={{ color: '#000000' }}>Service Category Distribution</span>}>
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
                 <Pie
@@ -335,7 +334,9 @@ function TabContent({ title, items, type }) {
                   <td className="p-3 text-gray-600">{item.rating || "-"}</td>
                 </>}
                 {type === "bookings" && <>
-                  <td className="p-3 text-gray-600">{item.services || item.packages}</td>
+                  <td className="p-3 text-gray-600">
+                    {item.service || item.package || item.service_name || item.package_name || "-"}
+                  </td>
                   <td className="p-3 text-gray-600">
                     <select
                       value={item.status}

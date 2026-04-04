@@ -336,7 +336,22 @@ const serviceUpload = multer({ storage: serviceStorage });
  
 app.get("/services", (req, res) => {
   db.query(
-    "SELECT * FROM services WHERE status = 'active'",
+    `SELECT s.id,
+            s.name,
+            s.description,
+            s.price,
+            s.duration,
+            s.image,
+            s.status,
+            s.created_at,
+            s.gender,
+            s.category,
+            IFNULL(ROUND(AVG(f.rating), 1), 0) AS rating
+     FROM services s
+     LEFT JOIN bookings b ON b.service_id = s.id
+     LEFT JOIN feedback f ON f.booking_id = b.id
+     WHERE s.status = 'active'
+     GROUP BY s.id, s.name, s.description, s.price, s.duration, s.image, s.status, s.created_at, s.gender, s.category`,
     (err, results) => {
       if (err) {
         console.error("SERVICES ERROR:", err);
@@ -628,6 +643,14 @@ app.post("/bookings", verifyUser, (req, res) => {
     return res.status(400).json({ message: "Date and time are required" });
   }
 
+  const [year, month, day] = booking_date.split("-").map(Number);
+  const bookingDate = new Date(year, month - 1, day);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (bookingDate < today) {
+    return res.status(400).json({ message: "Booking date must be today or in the future" });
+  }
+
   if (!location_type || (location_type === "home" && !address)) {
     return res.status(400).json({ message: "Location and address are required" });
   }
@@ -638,49 +661,79 @@ app.post("/bookings", verifyUser, (req, res) => {
  
   if (package_id) {
     db.query(
-      `INSERT INTO bookings 
-       (user_id, package_id, booking_date, booking_time, notes, status, location_type, address)
-       VALUES (?, ?, ?, ?, ?, 'upcoming', ?, ?)`,
-      [user_id, package_id, booking_date, booking_time, notes || null, location_type, address || null],
-      (err, result) => {
+      "SELECT id FROM bookings WHERE user_id = ? AND package_id = ? AND status != 'cancelled'",
+      [user_id, package_id],
+      (err, results) => {
         if (err) return res.status(500).json({ message: "DB error", error: err });
+        if (results.length > 0) {
+          return res.status(400).json({ message: "You have already booked this package" });
+        }
 
-        return res.json({
-          message: "Package booking successful",
-          bookingId: result.insertId,
-        });
+        db.query(
+          `INSERT INTO bookings 
+           (user_id, package_id, booking_date, booking_time, notes, status, location_type, address)
+           VALUES (?, ?, ?, ?, ?, 'upcoming', ?, ?)`,
+          [user_id, package_id, booking_date, booking_time, notes || null, location_type, address || null],
+          (err, result) => {
+            if (err) return res.status(500).json({ message: "DB error", error: err });
+
+            return res.json({
+              message: "Package booking successful",
+              bookingId: result.insertId,
+            });
+          }
+        );
       }
-    ); 
+    );
     return;
   }
  
   const insertedBookingIds = [];
 
-  const insertNext = (index) => {
-    if (index >= service_ids.length) {
-      return res.json({
-        message: "Booking successful",
-        bookingIds: insertedBookingIds,
-      });
-    }
+  let checkedCount = 0;
+  const duplicates = [];
 
-    const service_id = service_ids[index];
-
+  service_ids.forEach((service_id) => {
     db.query(
-      `INSERT INTO bookings 
-       (user_id, service_id, booking_date, booking_time, notes, status, location_type, address)
-       VALUES (?, ?, ?, ?, ?, 'upcoming', ?, ?)`,
-      [user_id, service_id, booking_date, booking_time, notes || null, location_type, address || null],
-      (err, result) => {
+      "SELECT id FROM bookings WHERE user_id = ? AND service_id = ? AND status != 'cancelled'",
+      [user_id, service_id],
+      (err, results) => {
         if (err) return res.status(500).json({ message: "DB error", error: err });
+        if (results.length > 0) duplicates.push(service_id);
+        checkedCount++;
+        if (checkedCount === service_ids.length) {
+          if (duplicates.length > 0) {
+            return res.status(400).json({ message: "You have already booked one or more of these services" });
+          }
 
-        insertedBookingIds.push(result.insertId);
-        insertNext(index + 1);
+        const insertNext = (index) => {
+          if (index >= service_ids.length) {
+            return res.json({
+              message: "Booking successful",
+              bookingIds: insertedBookingIds,
+            });
+          }
+
+          const service_id = service_ids[index];
+
+          db.query(
+            `INSERT INTO bookings 
+             (user_id, service_id, booking_date, booking_time, notes, status, location_type, address)
+             VALUES (?, ?, ?, ?, ?, 'upcoming', ?, ?)`,
+            [user_id, service_id, booking_date, booking_time, notes || null, location_type, address || null],
+            (err, result) => {
+              if (err) return res.status(500).json({ message: "DB error", error: err });
+
+              insertedBookingIds.push(result.insertId);
+              insertNext(index + 1);
+            }
+          );
+        };
+
+        insertNext(0);
       }
-    );
-  };
-
-  insertNext(0);
+    });
+  });
 });
   
 app.get("/bookings/my", verifyUser, (req, res) => {
@@ -777,6 +830,15 @@ app.put("/bookings/:id/reschedule", (req, res) => {
       address = location_type === "home" ? (address || booking.address || "") : "salon";
 
       if (!booking_date) return res.status(400).json({ message: "Booking date is required" });
+
+      const [year, month, day] = booking_date.split("-").map(Number);
+      const newBookingDate = new Date(year, month - 1, day);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (newBookingDate < today) {
+        return res.status(400).json({ message: "Booking date must be today or in the future" });
+      }
+
       if (!booking_time) return res.status(400).json({ message: "Booking time is required" });
 
       if (booking_time.length === 5) booking_time += ":00";
@@ -800,10 +862,14 @@ app.put("/bookings/:id/reschedule", (req, res) => {
 });
 
 app.put('/admin/bookings/:id/status', (req, res) => {
-  const bookingId = req.params.id; 
-  const { status } = req.body;     
- 
-  db.query('SELECT * FROM bookings WHERE id = ?', [bookingId], (err, rows) => {
+  const bookingId = req.params.id;
+  const { status } = req.body;
+
+  if (status !== 'completed') {
+    return res.status(400).json({ message: 'Admin can only change status to completed' });
+  }
+
+  db.query('SELECT status FROM bookings WHERE id = ?', [bookingId], (err, rows) => {
     if (err) {
       console.error('Error fetching booking:', err);
       return res.status(500).json({ message: 'Server error' });
@@ -812,8 +878,13 @@ app.put('/admin/bookings/:id/status', (req, res) => {
     if (rows.length === 0) {
       return res.status(404).json({ message: 'Booking not found' });
     }
- 
-    db.query('UPDATE bookings SET status = ? WHERE id = ?', [status, bookingId], (updateErr, result) => {
+
+    const currentStatus = rows[0].status;
+    if (currentStatus !== 'upcoming') {
+      return res.status(400).json({ message: 'Admin can only change upcoming bookings to completed' });
+    }
+
+    db.query('UPDATE bookings SET status = ? WHERE id = ?', [status, bookingId], (updateErr) => {
       if (updateErr) {
         console.error('Error updating booking status:', updateErr);
         return res.status(500).json({ message: 'Server error' });
@@ -1094,17 +1165,30 @@ app.put("/admin/packages/:id", verifyAdmin, packageUpload.single("image"), (req,
  
 app.get("/admin/packages", verifyAdmin, (req, res) => {
   db.query(
-    `SELECT p.id, p.name, p.description, p.price, p.duration, p.status, p.image,
-      JSON_ARRAYAGG(
-        CASE
-          WHEN s.id IS NOT NULL
-          THEN JSON_OBJECT('id', s.id, 'name', s.name, 'price', s.price)
-        END
-      ) AS services
+    `SELECT p.id,
+            p.name,
+            p.description,
+            p.price,
+            p.duration,
+            p.status,
+            p.image,
+            IFNULL(
+              (SELECT ROUND(AVG(f.rating), 1)
+               FROM bookings b
+               JOIN feedback f ON f.booking_id = b.id
+               WHERE b.package_id = p.id),
+              0
+            ) AS rating,
+            JSON_ARRAYAGG(
+              CASE
+                WHEN s.id IS NOT NULL
+                THEN JSON_OBJECT('id', s.id, 'name', s.name, 'price', s.price)
+              END
+            ) AS services
      FROM packages p
      LEFT JOIN package_services ps ON p.id = ps.package_id
      LEFT JOIN services s ON ps.service_id = s.id
-     GROUP BY p.id`,
+     GROUP BY p.id, p.name, p.description, p.price, p.duration, p.status, p.image`,
     (err, results) => {
       if (err) return res.status(500).json({ message: "DB error", error: err });
 
@@ -1121,18 +1205,30 @@ app.get("/admin/packages", verifyAdmin, (req, res) => {
  
 app.get("/packages", (req, res) => {
   db.query(
-    `SELECT p.id, p.name, p.description, p.price, p.duration, p.image,
-      JSON_ARRAYAGG(
-  CASE
-    WHEN s.id IS NOT NULL
-    THEN JSON_OBJECT('id', s.id, 'name', s.name, 'price', s.price)
-  END
-) AS services
+    `SELECT p.id,
+            p.name,
+            p.description,
+            p.price,
+            p.duration,
+            p.image,
+            IFNULL(
+              (SELECT ROUND(AVG(f.rating), 1)
+               FROM bookings b
+               JOIN feedback f ON f.booking_id = b.id
+               WHERE b.package_id = p.id),
+              0
+            ) AS rating,
+            JSON_ARRAYAGG(
+              CASE
+                WHEN s.id IS NOT NULL
+                THEN JSON_OBJECT('id', s.id, 'name', s.name, 'price', s.price)
+              END
+            ) AS services
      FROM packages p
      LEFT JOIN package_services ps ON p.id = ps.package_id
      LEFT JOIN services s ON ps.service_id = s.id
      WHERE p.status='active'
-     GROUP BY p.id`,
+     GROUP BY p.id, p.name, p.description, p.price, p.duration, p.image`,
     (err, results) => {
       if (err) return res.status(500).json({ message: "DB error", error: err });
       res.json(results);
@@ -1329,26 +1425,21 @@ app.get("/admin/monthly-stats", verifyAdmin, async (req, res) => {
       SELECT
         DATE_FORMAT(b.booking_date, '%Y-%m') AS month,
         COUNT(b.id) AS bookings,
-        COALESCE(SUM(COALESCE(s.price, 0) + COALESCE(p.price, 0)), 0) AS revenue
+        COALESCE(SUM(IFNULL(s.price, 0) + IFNULL(p.price, 0)), 0) AS revenue
       FROM bookings b
       LEFT JOIN services s ON b.service_id = s.id
       LEFT JOIN packages p ON b.package_id = p.id
-      GROUP BY YEAR(b.booking_date), MONTH(b.booking_date)
-      ORDER BY YEAR(b.booking_date), MONTH(b.booking_date)
+      GROUP BY DATE_FORMAT(b.booking_date, '%Y-%m')
+      ORDER BY DATE_FORMAT(b.booking_date, '%Y-%m')
     `);
-
-    if (!rows || rows.length === 0) {
-      return res.json([]);
-    }
-
-    res.json(rows);
+ 
+    res.json(rows || []);
   } catch (err) {
     console.error("Error fetching monthly stats:", err);
     res.status(500).json({
       message: "Failed to fetch monthly stats",
       error: err?.message || "unknown",
-      stack: err?.stack?.split('\n').slice(0, 3),
-    });
+    }); 
   }
 });
 
