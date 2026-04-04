@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { jwtDecode } from "jwt-decode";
 import Chat from "@/components/Chat";
+import AdminSidebar from "@/components/AdminSidebar";
 
 export default function AdminChatPage() {
   const [adminId, setAdminId] = useState(null);
@@ -53,8 +54,13 @@ export default function AdminChatPage() {
   }
 
   return (
+      <div className="flex">
+      <AdminSidebar />
+    <div className="flex-1">
     <div>
       <Chat userId={adminId} isAdmin={true} />
     </div>
+      </div>
+      </div>
   );
 }

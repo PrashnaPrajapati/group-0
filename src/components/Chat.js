@@ -174,7 +174,7 @@ const Chat = ({ userId, isAdmin }) => {
       <div className="flex h-screen bg-gray-100"> 
         <div className="w-1/4 bg-white border-r border-gray-200 overflow-y-auto">
           <div className="p-4 border-b border-gray-200">
-            <h2 className="text-xl font-bold">Conversations</h2>
+            <h2 className="text-xl font-bold text-gray-800">Conversations</h2>
           </div>
           
           {loading ? (
@@ -212,7 +212,7 @@ const Chat = ({ userId, isAdmin }) => {
               <div className="p-4 border-b border-gray-200 bg-gray-50">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-bold">{selectedUser.fullName}</h2>
+                    <h2 className="text-lg font-bold text-gray-800">{selectedUser.fullName}</h2>
                     <p className="text-sm text-gray-500">
                       {onlineUsers.has(selectedUser.id) ? (
                         <span className="text-green-600">● Online</span>
@@ -238,7 +238,7 @@ const Chat = ({ userId, isAdmin }) => {
                       <div
                         className={`max-w-xs px-4 py-2 rounded-lg ${
                           msg.sender_id === userId
-                            ? "bg-blue-500 text-white"
+                            ? "bg-gradient-to-r from-pink-500 to-purple-500 text-white"
                             : "bg-gray-200 text-gray-800"
                         }`}
                       >
@@ -268,12 +268,12 @@ const Chat = ({ userId, isAdmin }) => {
                     onChange={(e) => setMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder="Type your message..."
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg resize-none focus:outline-none placeholder:text-gray-500 focus:placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500"
                     rows="3"
                   />
                   <button
                     onClick={handleSendMessage}
-                    className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition font-semibold min-w-fit"
+                    className="px-6 py-2 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-lg hover:bg-gradient-to-r hover:from-pink-600 hover:to-purple-600 transition font-semibold min-w-fit"
                   >
                     Send
                   </button>
@@ -293,7 +293,7 @@ const Chat = ({ userId, isAdmin }) => {
   return (
     <div className="flex flex-col h-screen bg-white"> 
       <div className="p-4 border-b border-gray-200 bg-gray-50">
-        <h2 className="text-lg font-bold">Chat with Admin</h2>
+        <h2 className="text-lg font-bold text-gray-800">Chat with Admin</h2>
         <p className="text-sm text-gray-500">Get help with your bookings and services</p>
       </div>
  
@@ -310,8 +310,8 @@ const Chat = ({ userId, isAdmin }) => {
             >
               <div
                 className={`max-w-xs px-4 py-2 rounded-lg ${
-                  msg.sender_id === userId
-                    ? "bg-blue-500 text-white"
+                  msg.sender_id === userId 
+                    ? "bg-gradient-to-r from-pink-500 to-purple-500 text-white"
                     : "bg-gray-200 text-gray-800"
                 }`}
               >
@@ -341,12 +341,12 @@ const Chat = ({ userId, isAdmin }) => {
             onChange={(e) => setMessage(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Type your message..."
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg resize-none focus:outline-none placeholder-gray-500 focus:placeholder-gray-400 focus:ring-2 focus:ring-blue-500"
             rows="3"
           />
           <button
             onClick={handleSendMessage}
-            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition font-semibold min-w-fit"
+            className="px-6 py-2 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-lg hover:bg-gradient-to-r hover:from-pink-600 hover:to-purple-600 transition font-semibold min-w-fit"
           >
             Send
           </button>

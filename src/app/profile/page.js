@@ -7,6 +7,7 @@ import TextInput from "@/components/TextInput";
 import PasswordInput from "@/components/PasswordInput";
 import Button from "@/components/Button";
 import {User, Mail, Phone, MapPin, Lock} from "lucide-react";
+import Sidebar from "@/components/Sidebar";
  
 export default function ProfilePage() {
   const [profile, setProfile] = useState({
@@ -133,6 +134,9 @@ export default function ProfilePage() {
   };
 
 return (
+  <div className="flex">
+      <Sidebar />
+      <div className="flex-1 ml-64 p-8 bg-pink-50 min-h-screen">
   <div className="min-h-screen bg-pink-50 p-8 flex flex-col items-center space-y-8">
     <ToastContainer position="top-center" />
  
@@ -222,10 +226,13 @@ return (
           disabled={loadingPassword}
           icon={Lock}
         />
+        
         <Button onClick={changePassword} fullWidth disabled={loadingPassword}>
           {loadingPassword ? "Changing..." : "Change Password"}
         </Button>
       </div>
+    </div>
+    </div>
     </div>
   </div>
 );
