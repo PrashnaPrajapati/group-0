@@ -11,8 +11,7 @@ export default function AdminBookingsPage() {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const bookingsPerPage = 10;
-
-  // Fetch bookings initially and check for token
+ 
   useEffect(() => {
     setMounted(true);
     const t = localStorage.getItem("token");
@@ -43,8 +42,7 @@ const handleNextPage = () => {
 const handlePrevPage = () => {
   if (currentPage > 1) setCurrentPage(currentPage - 1);
 };
-
-  // Function to fetch all bookings
+ 
   const fetchBookings = (authToken) => {
     fetch("http://localhost:5001/admin/bookings", {
       headers: {
@@ -52,11 +50,10 @@ const handlePrevPage = () => {
       },
     })
       .then((res) => {
-        if (res.status === 401) {
-          // Unauthorized, clear token and redirect to login
+        if (res.status === 401) { 
           alert("Session expired. Please log in again.");
-          localStorage.removeItem("token"); // Remove invalid token
-          window.location.href = "/login"; // Redirect to login page
+          localStorage.removeItem("token"); 
+          window.location.href = "/login"; 
           return;
         }
 
@@ -75,16 +72,14 @@ const handlePrevPage = () => {
         setLoading(false);
       });
   };
-
-  // Handle status change and update both frontend and backend
+ 
   const handleStatusChange = (id, newStatus) => {
     // Optimistically update the local state
     const updatedBookings = bookings.map((b) =>
       b.id === id ? { ...b, status: newStatus } : b
     );
     setBookings(updatedBookings);
-
-    // Update the status in the backend
+ 
     fetch(`http://localhost:5001/admin/bookings/${id}/status`, {
       method: "PUT",
       headers: {
@@ -94,30 +89,23 @@ const handlePrevPage = () => {
       body: JSON.stringify({ status: newStatus }),
     })
       .then((res) => {
-        if (!res.ok) {
-          // If response is not OK, check if it's HTML (error page)
+        if (!res.ok) { 
           return res.text().then((text) => {
-            try {
-              // Try to parse it as JSON
+            try { 
               const errorData = JSON.parse(text);
               throw new Error(
                 `Failed to update booking status: ${errorData.message || "Unknown error"}`
               );
-            } catch (err) {
-              // If parsing fails, assume it's an HTML error page
+            } catch (err) {  
               throw new Error(`Server error: ${text}`);
             }
           });
-        }
-
-        // Refetch bookings after a successful update to sync with the server
+        } 
         fetchBookings(token);
       })
       .catch((err) => {
         console.error("Error updating status:", err);
-        // Optionally provide more detailed feedback to the user
-        alert(`Failed to update status: ${err.message}`);
-        // Revert to the previous state if there's an error
+        alert(`Failed to update status: ${err.message}`); 
         setBookings(bookings);
       });
   };
@@ -188,8 +176,7 @@ const handlePrevPage = () => {
                   <td className="py-3 px-5">
   <select
     value={b.status}
-    onChange={(e) => {
-      // Only allow status change if the current status isn't 'cancelled'
+    onChange={(e) => { 
       if (b.status !== 'cancelled' || e.target.value !== 'cancelled') {
         handleStatusChange(b.id, e.target.value);
       }
@@ -224,8 +211,7 @@ const handlePrevPage = () => {
             </tbody>
           </table>
         </div>
-
-        {/* POPUP MODAL WITH BACKDROP BLUR */}
+ 
         {selectedBooking && (
           <div className="fixed inset-0 flex items-center justify-center backdrop-blur-sm">
             <div className="bg-white p-8 rounded-lg shadow-xl w-[420px] text-gray-800 border border-pink-200">

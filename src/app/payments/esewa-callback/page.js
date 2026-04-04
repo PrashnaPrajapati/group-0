@@ -13,35 +13,29 @@ export default function EsewaCallbackPage() {
 
   useEffect(() => {
     const verifyPayment = async () => {
-      try {
-        // Check if we have base64 encoded data in query params (v2 API)
-        const dataParam = searchParams.get("data");
-
+      try { 
+        const dataParam = searchParams.get("data"); 
         let refId, pid, amt, bookingIds;
 
-        if (dataParam) {
-          // Decode base64 data from v2 API
+        if (dataParam) { 
           try {
             const decodedData = JSON.parse(atob(dataParam));
             refId = decodedData.transaction_code;
             pid = decodedData.transaction_uuid;
-            amt = decodedData.total_amount;
-            // bookingIds will come from localStorage
+            amt = decodedData.total_amount; 
           } catch (decodeError) {
             console.error("Failed to decode eSewa response:", decodeError);
             setStatus("❌ Invalid payment response from eSewa");
             setIsVerifying(false);
             return;
           }
-        } else {
-          // Fallback to v1 API query parameters
+        } else { 
           refId = searchParams.get("refId");
           pid = searchParams.get("pid") || searchParams.get("txnId");
           amt = searchParams.get("amt") || searchParams.get("total_amount");
           bookingIds = searchParams.get("bookingIds");
         }
-
-        // Get pending transaction from localStorage
+ 
         const pendingTxn = JSON.parse(
           localStorage.getItem("pendingTransaction") || "{}"
         );
@@ -53,8 +47,7 @@ export default function EsewaCallbackPage() {
         }
 
         const paymentAmount = amt || pendingTxn.amount;
-
-        // Verify payment with backend
+ 
         const verifyResponse = await fetch("/api/payments/verify-esewa", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -75,8 +68,7 @@ export default function EsewaCallbackPage() {
           setIsVerifying(false);
           return;
         }
-
-        // Confirm bookings
+ 
         const confirmResponse = await fetch(
           "http://localhost:5001/bookings/confirm",
           {
@@ -95,8 +87,7 @@ export default function EsewaCallbackPage() {
           setIsVerifying(false);
           return;
         }
-
-        // Clear pending transaction
+ 
         localStorage.removeItem("pendingTransaction");
 
         setStatus("✅ Payment successful! Redirecting...");

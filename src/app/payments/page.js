@@ -8,8 +8,7 @@ import Footer from "@/components/Footer";
 export default function PaymentsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-
-  // Expect bookingIds as comma-separated string from previous page
+ 
   const bookingIdsParam = searchParams.get("bookingIds");
   const totalPrice = searchParams.get("totalPrice");
 
@@ -19,8 +18,7 @@ export default function PaymentsPage() {
 
   const [paymentStatus, setPaymentStatus] = useState(null);
   const [loading, setLoading] = useState(false);
-
-  // eSewa form data
+ 
   const [userEmail, setUserEmail] = useState("");
 
   const handleEsewaPayment = async () => {
@@ -40,8 +38,7 @@ export default function PaymentsPage() {
     const transactionUuid = `TXN${Date.now()}`;
     const successUrl = `${window.location.origin}/payments/esewa-callback?bookingIds=${bookingIds.join(",")}&txnId=${transactionUuid}`;
     const failUrl = `${window.location.origin}/payments/payment-failed`;
-
-    // Generate signature for eSewa v2 API
+ 
     try {
       const signatureResponse = await fetch("/api/payments/esewa-signature", {
         method: "POST",
@@ -68,8 +65,7 @@ export default function PaymentsPage() {
           email: userEmail,
         })
       );
-
-      // Use eSewa v2 API with proper parameters
+ 
       const esewaData = {
         amount: totalPrice,
         tax_amount: 0,
@@ -127,8 +123,7 @@ export default function PaymentsPage() {
             <p className="text-lg font-semibold mb-4">
               Total Price: Rs. {totalPrice}
             </p>
-
-            {/* Email Input */}
+ 
             <input
               type="email"
               placeholder="Enter your email"
@@ -136,8 +131,7 @@ export default function PaymentsPage() {
               onChange={(e) => setUserEmail(e.target.value)}
               className="w-full p-2 border mb-3 rounded"
             />
-
-            {/* eSewa Payment Button */}
+ 
             <button
               onClick={handleEsewaPayment}
               disabled={loading}
@@ -145,8 +139,7 @@ export default function PaymentsPage() {
             >
               {loading ? "Processing..." : "Pay with eSewa"}
             </button>
-
-            {/* Status Message */}
+ 
             {paymentStatus && (
               <div className="mt-4 text-center text-sm font-medium text-gray-700">
                 {paymentStatus}

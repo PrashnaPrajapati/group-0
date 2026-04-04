@@ -16,7 +16,7 @@ export default function BookingsPage() {
 
   const [bookingType, setBookingType] = useState(
     packageIdFromQuery ? "package" : "service"
-  ); // service or package
+  ); 
   const [selectedServices, setSelectedServices] = useState(
     serviceIdFromQuery ? [serviceIdFromQuery] : []
   );
@@ -27,7 +27,7 @@ export default function BookingsPage() {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [notes, setNotes] = useState("");
-  const [locationType, setLocationType] = useState(""); // home or salon
+  const [locationType, setLocationType] = useState(""); 
   const [address, setAddress] = useState("");
 
   const [loading, setLoading] = useState(false);
@@ -51,8 +51,7 @@ export default function BookingsPage() {
       .then((data) => setPackages(Array.isArray(data) ? data : []))
       .catch(() => setPackages([]));
   }, []);
-
-  // Fetch booked slots whenever date changes
+ 
   useEffect(() => {
     if (!date) return;
 
@@ -70,7 +69,7 @@ export default function BookingsPage() {
   };
 
   const handlePackageClick = (id) => {
-  if(packageIdFromQuery) return; // Do nothing if coming from package page
+  if(packageIdFromQuery) return; 
   setSelectedPackage(id === selectedPackage ? null : id);
 };
 
@@ -120,8 +119,7 @@ export default function BookingsPage() {
     
    const bookingIdsParam = data.bookingIds ? data.bookingIds.join(",") : data.bookingId;
     router.push(`/payments?bookingIds=${bookingIdsParam}&totalPrice=${totalPrice}`);
-
-    // Reset form (optional)
+ 
     setSelectedServices(serviceIdFromQuery ? [serviceIdFromQuery] : []);
     setSelectedPackage(null);
     setDate("");
@@ -135,8 +133,7 @@ export default function BookingsPage() {
   } finally {
     setLoading(false);
   }
-};
-
+}; 
   const selectedServiceObjects = services.filter((s) =>
     selectedServices.includes(s.id)
   );
@@ -157,8 +154,7 @@ export default function BookingsPage() {
           (sum, s) => sum + Number(String(s.duration).replace(/\D/g, "")),
           0
         ) || 0;
-
-  // Filter past slots if date is today
+ 
   const today = new Date();
   const selectedDate = new Date(date);
   const filteredTimeSlots = timeSlots.filter((slot) => {
@@ -180,10 +176,8 @@ export default function BookingsPage() {
             Book Your Appointment
           </h1>
 
-          <div className="max-w-7xl mx-auto flex gap-6 items-start justify-center">
-            {/* LEFT SIDE – Services / Packages */}
-            <div className="w-2/6">
-              {/* Toggle buttons */}
+          <div className="max-w-7xl mx-auto flex gap-6 items-start justify-center"> 
+            <div className="w-2/6"> 
               <div className="mb-4 flex gap-4">
                 <button
                     onClick={() => !packageIdFromQuery && setBookingType("service")}
@@ -206,8 +200,7 @@ export default function BookingsPage() {
                   Packages
                 </button>
               
-              </div>
-
+              </div> 
               <div className="grid grid-cols-1 gap-6">
                 {bookingType === "service" &&
                   services
@@ -261,49 +254,48 @@ export default function BookingsPage() {
                 ))}
               </div>
             </div>
-
-            {/* MIDDLE SIDE – Booking Form */}
+ 
             <div className="w-2/6 bg-white p-6 rounded-xl shadow-lg sticky top-24">
               {errorMessage && (
                 <div className="mb-4 p-2 bg-red-100 text-red-700 rounded">{errorMessage}</div>
               )}
 
               <h2 className="text-xl font-semibold mb-6 text-gray-800">
-  {bookingType === "service" ? "Selected Services" : "Selected Package"}
-</h2>
+                {bookingType === "service" ? "Selected Services" : "Selected Package"}
+              </h2>
 
-{bookingType === "service" ? (
-  selectedServiceObjects.length > 0 ? (
-    <ul className="mb-6 text-gray-700 space-y-1">
-      {selectedServiceObjects.map((s) => (
-        <li key={s.id} className="flex justify-between">
-          <span>{s.name}</span>
-          <span>Rs. {Number(s.price).toFixed(2)}</span>
-        </li>
-      ))}
-      <li className="font-semibold flex justify-between pt-2 border-t border-gray-300">
-        <span>Total:</span>
-        <span>Rs. {totalPrice.toFixed(2)}</span>
-      </li>
-    </ul>
-  ) : (
-    <p className="mb-6 text-gray-500">No service selected</p>
-  )
-) : selectedPackageObject ? (
-  <ul className="mb-6 text-gray-700 space-y-1">
-    <li className="flex justify-between">
-      <span>{selectedPackageObject.name}</span>
-      <span>Rs. {Number(selectedPackageObject.price).toFixed(2)}</span>
-    </li>
+              {bookingType === "service" ? (
+                selectedServiceObjects.length > 0 ? (
+                  <ul className="mb-6 text-gray-700 space-y-1">
+                    {selectedServiceObjects.map((s) => (
+                      <li key={s.id} className="flex justify-between">
+                        <span>{s.name}</span>
+                        <span>Rs. {Number(s.price).toFixed(2)}</span>
+                      </li>
+                    ))}
+                    <li className="font-semibold flex justify-between pt-2 border-t border-gray-300">
+                      <span>Total:</span>
+                      <span>Rs. {totalPrice.toFixed(2)}</span>
+                    </li>
+                  </ul>
+                ) : (
+                  <p className="mb-6 text-gray-500">No service selected</p>
+                )
+              ) : selectedPackageObject ? (
+                <ul className="mb-6 text-gray-700 space-y-1">
+                  <li className="flex justify-between">
+                    <span>{selectedPackageObject.name}</span>
+                    <span>Rs. {Number(selectedPackageObject.price).toFixed(2)}</span>
+                  </li>
 
-    <li className="font-semibold flex justify-between pt-2 border-t border-gray-300">
-      <span>Total:</span>
-      <span>Rs. {Number(selectedPackageObject.price).toFixed(2)}</span>
-    </li>
-  </ul>
-) : (
-  <p className="mb-6 text-gray-500">No package selected</p>
-)}
+                  <li className="font-semibold flex justify-between pt-2 border-t border-gray-300">
+                    <span>Total:</span>
+                    <span>Rs. {Number(selectedPackageObject.price).toFixed(2)}</span>
+                  </li>
+                </ul>
+              ) : (
+                <p className="mb-6 text-gray-500">No package selected</p>
+              )}
 
               <form>
                 <fieldset className="mb-6">
@@ -353,8 +345,7 @@ export default function BookingsPage() {
                     className="w-full p-2 border border-gray-300 rounded text-gray-700"
                   />
                 </div>
-
-                {/* TIME SLOT BUTTONS */}
+ 
                 <div className="mb-6">
                   <label className="block mb-3 text-gray-700 font-semibold">Choose a Time Slot</label>
                   <div className="grid grid-cols-4 gap-3">
@@ -394,90 +385,87 @@ export default function BookingsPage() {
                 </div>
               </form>
             </div>
+ 
+            <form
+              onSubmit={handleSubmit}
+              className="w-2/6 bg-white p-6 rounded-xl shadow-lg sticky top-24"
+            >
+              <h2 className="text-xl font-semibold mb-6 text-gray-800">Booking Summary</h2>
 
-            {/* RIGHT SIDE – Booking Summary */}
-            {/* RIGHT SIDE – Booking Summary */}
-<form
-  onSubmit={handleSubmit}
-  className="w-2/6 bg-white p-6 rounded-xl shadow-lg sticky top-24"
->
-  <h2 className="text-xl font-semibold mb-6 text-gray-800">Booking Summary</h2>
+              <div className="text-gray-700 space-y-3 mb-6">
+                <div className="flex justify-between">
+                  <span>Service / Package</span>
+                  <span className="font-semibold">
+                    {bookingType === "service"
+                      ? selectedServiceObjects.length > 0
+                        ? selectedServiceObjects.map((s) => s.name).join(", ")
+                        : "-"
+                      : selectedPackageObject
+                      ? selectedPackageObject.name
+                      : "-"}
+                  </span>
+                </div>
 
-  <div className="text-gray-700 space-y-3 mb-6">
-    <div className="flex justify-between">
-      <span>Service / Package</span>
-      <span className="font-semibold">
-        {bookingType === "service"
-          ? selectedServiceObjects.length > 0
-            ? selectedServiceObjects.map((s) => s.name).join(", ")
-            : "-"
-          : selectedPackageObject
-          ? selectedPackageObject.name
-          : "-"}
-      </span>
-    </div>
+                <div className="flex justify-between">
+                  <span>Duration</span>
+                  <span className="font-semibold">{totalDuration} mins</span>
+                </div>
 
-    <div className="flex justify-between">
-      <span>Duration</span>
-      <span className="font-semibold">{totalDuration} mins</span>
-    </div>
+                <div className="flex justify-between">
+                  <span>Date</span>
+                  <span className="font-semibold">{date || "-"}</span>
+                </div>
 
-    <div className="flex justify-between">
-      <span>Date</span>
-      <span className="font-semibold">{date || "-"}</span>
-    </div>
+                <div className="flex justify-between">
+                  <span>Time</span>
+                  <span className="font-semibold">{time || "-"}</span>
+                </div>
 
-    <div className="flex justify-between">
-      <span>Time</span>
-      <span className="font-semibold">{time || "-"}</span>
-    </div>
+                <div className="flex justify-between">
+                  <span>Location</span>
+                  <span className="font-semibold">
+                    {locationType === "home"
+                      ? "Home"
+                      : locationType === "salon"
+                      ? "Salon"
+                      : "-"}
+                  </span>
+                </div>
+              </div>
 
-    <div className="flex justify-between">
-      <span>Location</span>
-      <span className="font-semibold">
-        {locationType === "home"
-          ? "Home"
-          : locationType === "salon"
-          ? "Salon"
-          : "-"}
-      </span>
-    </div>
-  </div>
+              <hr className="mb-6 border-gray-300" />
 
-  <hr className="mb-6 border-gray-300" />
+              {/* Total Price */}
+              <div className="flex justify-between text-lg font-bold text-pink-500 mb-6">
+                <span>Total</span>
+                <span>
+              Rs.{" "}
+              {bookingType === "service"
+                ? totalPrice.toFixed(2)
+                : selectedPackageObject
+                ? Number(selectedPackageObject.price).toFixed(2)
+                : "0.00"}
+            </span>
+              </div>
 
-  {/* Total Price */}
-  <div className="flex justify-between text-lg font-bold text-pink-500 mb-6">
-    <span>Total</span>
-    <span>
-  Rs.{" "}
-  {bookingType === "service"
-    ? totalPrice.toFixed(2)
-    : selectedPackageObject
-    ? Number(selectedPackageObject.price).toFixed(2)
-    : "0.00"}
-</span>
-  </div>
-
-  <button
-    type="submit"
-    disabled={
-      loading ||
-      (bookingType === "service" && selectedServices.length === 0) ||
-      (bookingType === "package" && !selectedPackage) ||
-      !date?.trim() ||
-      !time?.trim() ||
-      !locationType?.trim() ||
-      (locationType === "home" && !address?.trim())
-    }
-    className="w-full py-2 text-white rounded-full bg-gradient-to-r from-pink-500 to-purple-500 hover:scale-105 transition"
-  >
-    {loading ? "Booking..." : "Proceed to Payment"}
-  </button>
-</form>
+              <button
+                type="submit"
+                disabled={
+                  loading ||
+                  (bookingType === "service" && selectedServices.length === 0) ||
+                  (bookingType === "package" && !selectedPackage) ||
+                  !date?.trim() ||
+                  !time?.trim() ||
+                  !locationType?.trim() ||
+                  (locationType === "home" && !address?.trim())
+                }
+                className="w-full py-2 text-white rounded-full bg-gradient-to-r from-pink-500 to-purple-500 hover:scale-105 transition"
+              >
+                {loading ? "Booking..." : "Proceed to Payment"}
+              </button>
+            </form>
           </div>
-        </main>
-
+        </main> 
         <Footer />
       </div>
     </div>

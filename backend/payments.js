@@ -1,8 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const db = require("./db");
-
-// Save transaction to database
+ 
 router.post("/save-transaction", async (req, res) => {
   try {
     const { refId, txnId, amount, bookingIds, status, paymentMethod } =
@@ -45,8 +44,7 @@ router.post("/save-transaction", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
-
-// Get payment details
+ 
 router.get("/transaction/:refId", (req, res) => {
   try {
     const { refId } = req.params;

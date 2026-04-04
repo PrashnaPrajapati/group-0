@@ -12,8 +12,7 @@ export default function BookPackagePage() {
   const [packages, setPackages] = useState([]);
   const [filteredPackages, setFilteredPackages] = useState([]);
   const [search, setSearch] = useState("");
-
-  // Fetch packages when the tab is packages
+ 
   useEffect(() => {
     if (tab === "packages") {
       fetch("http://localhost:5001/packages")
@@ -25,15 +24,13 @@ export default function BookPackagePage() {
         .catch((err) => console.error(err));
     }
   }, [tab]);
-
-  // Redirect to services tab
+ 
   useEffect(() => {
     if (tab === "services") {
       router.push("/services");
     }
   }, [tab, router]);
-
-  // Filter packages based on search
+ 
   useEffect(() => {
     if (!search.trim()) {
       setFilteredPackages(packages);
@@ -64,8 +61,7 @@ export default function BookPackagePage() {
               Combined multiple services for a complete experience.
             </p>
           </div>
-
-          {/* TAB SWITCHER */}
+ 
           <div className="flex justify-center mb-6">
             <div className="flex bg-white border border-pink-200 rounded-full shadow-sm p-1">
               <button
@@ -90,8 +86,7 @@ export default function BookPackagePage() {
               </button>
             </div>
           </div>
-
-          {/* SEARCH BOX */}
+ 
           {tab === "packages" && (
             <div className="max-w-6xl mx-auto mb-6">
               <input
@@ -109,8 +104,7 @@ export default function BookPackagePage() {
             Enjoy convenience, value, and relaxation - all in one package.
          </p>
         </div>
-
-          {/* PACKAGES GRID */}
+ 
           {tab === "packages" && (
             <div className="max-w-8xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredPackages.length === 0 ? (

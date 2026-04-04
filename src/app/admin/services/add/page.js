@@ -16,8 +16,8 @@ export default function AddServicePage() {
     gender: "",
     category: "",
   });
-  const [image, setImage] = useState(null); // new
-  const [preview, setPreview] = useState(null); // new for preview
+  const [image, setImage] = useState(null);
+  const [preview, setPreview] = useState(null); 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -72,8 +72,7 @@ export default function AddServicePage() {
         setLoading(false);
         return;
       }
-
-      // ✅ Show toast instead of alert
+ 
       toast.success("Service added successfully ✅", {
         position: "top-center",
         autoClose: 1000,
@@ -95,8 +94,7 @@ export default function AddServicePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex justify-center items-start p-6 pt-10 gap-20">
-      {/* Back button */}
+    <div className="min-h-screen bg-gray-50 flex justify-center items-start p-6 pt-10 gap-20"> 
       <div className="flex flex-col justify-start">
         <button
           onClick={() => router.back()}
@@ -105,8 +103,7 @@ export default function AddServicePage() {
           ← Back
         </button>
       </div>
-
-      {/* Form container */}
+ 
       <div className="bg-white w-full max-w-lg rounded-xl shadow-[0_4px_6px_-1px_rgba(236,72,153,0.4),0_2px_4px_-1px_rgba(236,72,153,0.06)] border p-8">
         <h1 className="text-2xl font-bold text-pink-500 mb-6 text-center">
           <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
@@ -118,8 +115,7 @@ export default function AddServicePage() {
           <div className="bg-red-100 text-red-600 p-3 rounded mb-4 text-sm">{error}</div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Service Name */}
+        <form onSubmit={handleSubmit} className="space-y-5"> 
           <div>
             <label className="block text-md font-medium text-gray-900 mb-1">Service Name *</label>
             <input
@@ -130,8 +126,7 @@ export default function AddServicePage() {
               className="w-full border border-gray-400 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
             />
           </div>
-
-          {/* Description */}
+ 
           <div>
             <label className="block text-md font-medium text-gray-900 mb-1">Description</label>
             <textarea
@@ -141,9 +136,7 @@ export default function AddServicePage() {
               rows="3" 
               className="w-full border border-gray-400 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
             />
-          </div>
-
-          {/* Price */}
+          </div> 
           <div>
             <label className="block text-md font-medium text-gray-900 mb-1">Price (Rs.) *</label>
             <input
@@ -154,8 +147,7 @@ export default function AddServicePage() {
               className="w-full border border-gray-400 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
             />
           </div>
-
-          {/* Duration */}
+ 
           <div>
             <label className="block text-md font-medium text-gray-900 mb-1">Duration *</label>
             <input
@@ -166,8 +158,7 @@ export default function AddServicePage() {
               className="w-full border border-gray-400 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
             />
           </div>
-
-          {/* Gender */}
+ 
           <div>
             <label className="block text-md font-medium text-gray-900 mb-1">Gender *</label>
             <select
@@ -181,8 +172,7 @@ export default function AddServicePage() {
               <option value="female">Female</option>
             </select>
           </div>
-
-          {/* Category */}
+ 
           <div>
             <label className="block text-md font-medium text-gray-900 mb-1">Category *</label>
             <select
@@ -201,8 +191,7 @@ export default function AddServicePage() {
               <option value="spa">Spa</option>
             </select>
           </div>
-
-          {/* Image Upload */}
+ 
           <div>
             <label className="block text-md font-medium text-gray-900 mb-1">Image</label>
             <div className="flex items-center space-x-4">
@@ -225,8 +214,7 @@ export default function AddServicePage() {
               <img src={preview} alt="Preview" className="mt-2 w-32 h-32 object-cover rounded" />
             )}
           </div>
-
-          {/* Buttons */}
+ 
           <div className="flex justify-between items-center pt-4">
             <button
               type="button"
@@ -245,9 +233,7 @@ export default function AddServicePage() {
             </button>
           </div>
         </form>
-      </div>
-
-      {/* Toast container */}
+      </div> 
       <ToastContainer />
     </div>
   );

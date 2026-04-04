@@ -34,8 +34,7 @@ export default function AdminPackagesPage() {
   useEffect(() => {
     fetchPackages();
   }, []);
-
-  // Pagination
+ 
   const indexOfLastPackage = currentPage * packagesPerPage;
   const indexOfFirstPackage = indexOfLastPackage - packagesPerPage;
   const currentPackages = packages.slice(indexOfFirstPackage, indexOfLastPackage);
@@ -48,8 +47,7 @@ export default function AdminPackagesPage() {
   const handlePrevPage = () => {
     if (currentPage > 1) setCurrentPage(currentPage - 1);
   };
-
-  // Toast confirmation helper
+ 
   const confirmWithToast = (message, onConfirm) => {
     toast.info(
       ({ closeToast }) => (
@@ -119,8 +117,7 @@ export default function AdminPackagesPage() {
 
       <main className="flex-1 p-8">
         <ToastContainer position="top-center" />
-
-        {/* Header */}
+ 
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={() => router.back()}
@@ -130,20 +127,20 @@ export default function AdminPackagesPage() {
           </button>
 
             <div className="text-center mb-6">
-  <h1 className="text-3xl font-bold">
-    <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
-      Package Management
-    </span>
-  </h1>
+              <h1 className="text-3xl font-bold">
+                <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
+                  Package Management
+                </span>
+              </h1>
 
-  <p className="text-gray-500 mt-2">
-    Manage all available packages in one place
-  </p>
-  <p className="text-gray-500 text-md mt-1">
-    Add new packages, update details, control pricing, duration, and linked services efficiently
-  </p>
-  
-</div>
+              <p className="text-gray-500 mt-2">
+                Manage all available packages in one place
+              </p>
+              <p className="text-gray-500 text-md mt-1">
+                Add new packages, update details, control pricing, duration, and linked services efficiently
+              </p>
+              
+            </div>
 
           <button
             onClick={() => router.push("/admin/packages/add")}
@@ -152,8 +149,7 @@ export default function AdminPackagesPage() {
             + Add Package
           </button>
         </div>
-
-        {/* Table */}
+ 
         <div className="bg-white shadow-[0_4px_6px_-1px_rgba(236,72,153,0.4),0_2px_4px_-1px_rgba(236,72,153,0.06)] rounded-xl overflow-x-auto border">
           <table className="w-full text-sm">
             <thead className="bg-pink-50 text-gray-700">
@@ -218,8 +214,7 @@ export default function AdminPackagesPage() {
             </tbody>
           </table>
         </div>
-
-        {/* Pagination */}
+ 
         <div className="mt-4 flex justify-center gap-4">
           <button
             onClick={handlePrevPage}

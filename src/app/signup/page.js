@@ -64,33 +64,28 @@ export default function SignupPage() {
 
   const validateEmail = () => {
   const trimmed = email.trim();
-
-  // Allowed email providers
+ 
   const allowedProviders = [
     "gmail", "yahoo", "hotmail", "outlook", "icloud",
     "aol", "protonmail", "zoho", "gmx", "mail"
   ];
-
-  // Allowed top-level domains
+ 
   const allowedTLDs = [
     "com", "edu", "io", "org", "net", "co", "gov",
     "in", "ai", "app", "dev"
   ];
-
-  // Regex: local part + @ + allowed provider + . + allowed TLD
+ 
   const regex = new RegExp(
     `^[a-zA-Z0-9._%+-]+@(${allowedProviders.join("|")})\\.(${allowedTLDs.join("|")})$`,
-    "i" // case-insensitive
+    "i"  
   );
-
-  // Check if email is empty
+ 
   if (!trimmed) {
     setErrors(prev => ({ ...prev, email: "Email is required." }));
     emailRef.current?.focus();
     return false;
   }
-
-  // Check if email matches allowed providers/TLDs
+ 
   if (!regex.test(trimmed)) {
     setErrors(prev => ({
       ...prev,
@@ -99,12 +94,10 @@ export default function SignupPage() {
     emailRef.current?.focus();
     return false;
   }
-
-  // Clear errors if valid
+ 
   setErrors(prev => ({ ...prev, email: "" }));
   return true;
-};
-
+}; 
 
   const validatePassword = () => {
     const trimmed = password.trim();
@@ -134,9 +127,7 @@ export default function SignupPage() {
 
   setErrors(prev => ({ ...prev, confirmPassword: "" }));
   return true;
-};
-
-
+}; 
   const validateGender = () => {
     if (!gender) {
       setErrors(prev => ({ ...prev, gender: "Please select a gender." }));
@@ -194,8 +185,7 @@ export default function SignupPage() {
         });
         setLoading(false);
         return;
-      }
-
+      } 
      
       toast.update(creatingToastId, {
         render: "Account Created Successfully!",
@@ -206,7 +196,6 @@ export default function SignupPage() {
         draggable: true,
       });
 
-      
       setTimeout(() => {
         router.push("/login");
       }, 1000);
@@ -233,17 +222,14 @@ export default function SignupPage() {
       pauseOnFocusLoss
       draggable
       pauseOnHover
-      />
-      {/* Left Image */}
+      /> 
       <div className="hidden md:block w-1/2">
         <img
           src="/signup.png"
           
           className="w-full h-full object-cover brightness-90"
         />
-      </div>
-
-      {/* Right Section */}
+      </div> 
       <div className="w-full md:w-1/2 flex items-center justify-center bg-pink-50 px-8 py-12">
         <div className="w-full max-w-md">
           <Logo />
@@ -255,8 +241,7 @@ export default function SignupPage() {
           </p>
 
           <form className="space-y-5" onSubmit={handleSignup}>
-
-            {/* Full Name */}
+ 
             <TextInput
               ref={fullNameRef}
               placeholder="Enter your full name"
@@ -273,8 +258,7 @@ export default function SignupPage() {
               error={errors.fullName}
               disabled={loading}
             />
-
-            {/* Phone */}
+ 
             <TextInput
             ref={phoneRef}
             placeholder="Enter your phone number"
@@ -297,8 +281,7 @@ export default function SignupPage() {
             error={errors.phone}
             disabled={loading}
           />
-
-            {/* Email */}
+ 
             <TextInput
               ref={emailRef}
               placeholder="Enter your email"
@@ -316,8 +299,7 @@ export default function SignupPage() {
               error={errors.email}
               disabled={loading}
             />
-
-            {/* Password */}
+ 
             <PasswordInput
               ref={passwordRef}
               placeholder="Create a password"
@@ -336,8 +318,7 @@ export default function SignupPage() {
               error={errors.password}
               disabled={loading}
             />
-
-            {/* Confirm Password */}
+ 
             <PasswordInput
               ref={confirmPasswordRef}
               placeholder="Confirm your password"
@@ -356,8 +337,7 @@ export default function SignupPage() {
               error={errors.confirmPassword}
               disabled={loading}
             />
-
-            {/* Gender */}
+ 
             <div>
               <label className="text-sm font-medium text-gray-700">Gender</label>
               <div className="flex items-center gap-5 mt-2">
@@ -400,8 +380,7 @@ export default function SignupPage() {
             <Link href="/login" className="text-pink-500 font-medium">
               Login
             </Link>
-          </div>
-
+          </div> 
           </form>
         </div>
       </div>

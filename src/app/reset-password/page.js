@@ -24,8 +24,7 @@ export default function ResetPasswordPage() {
 
   if (!token)
     return <p className="text-center mt-20 text-red-600">Invalid password reset link.</p>;
-
-  // Validate password strength
+ 
   const validatePassword = () => {
     const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
 
@@ -71,8 +70,7 @@ export default function ResetPasswordPage() {
 
     setLoading(true);
 
-    try {
-      // Step 2: Call backend to reset password
+    try { 
       const res = await fetch("http://localhost:5001/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -81,8 +79,7 @@ export default function ResetPasswordPage() {
 
       const data = await res.json();
 
-      if (res.ok) {
-        // Successfully reset
+      if (res.ok) { 
         setMessage(data.message || "Password reset successfully!");
         setTimeout(() => router.push("/login"), 3000);
       } else {
@@ -92,12 +89,9 @@ export default function ResetPasswordPage() {
       setError("Server error. Please try again later.");
     } finally {
       setLoading(false);
-    }
-
-
+    } 
   };
 
-  
   return (
     <div className="min-h-screen flex items-center justify-center bg-pink-50 px-8 py-12">
       <div className="max-w-md w-full bg-white rounded-lg shadow p-8">
@@ -115,8 +109,7 @@ export default function ResetPasswordPage() {
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
-                  if (validatePassword()) {
-                    // Only move to confirm if new password is strong
+                  if (validatePassword()) { 
                     confirmPasswordRef.current?.focus();
                   }
                 }
@@ -130,8 +123,7 @@ export default function ResetPasswordPage() {
               {showPassword ? <EyeOff /> : <Eye />}
             </span>
           </div>
-
-          {/* Confirm Password */}
+ 
           <div className="relative">
             <input
               ref={confirmPasswordRef}
@@ -151,8 +143,7 @@ export default function ResetPasswordPage() {
 
           {error && <p className="text-red-600 text-sm">{error}</p>}
           {message && <p className="text-green-600 text-sm">{message}</p>}
-
-          {/* Use reusable Button component */}
+  
           <Button type="submit" fullWidth disabled={loading}>
             {loading ? "Resetting..." : "Reset Password"}
           </Button>

@@ -1,8 +1,7 @@
 const db = require('./db');
 
 console.log('\n🔍 Checking Chat System Setup...\n');
-
-// Check messages table
+ 
 db.query('DESCRIBE messages', (err, results) => {
   if (err) {
     console.log('❌ Messages table NOT found');
@@ -10,8 +9,7 @@ db.query('DESCRIBE messages', (err, results) => {
     console.log('✅ Messages table exists');
     console.log('   Columns:', results.map(r => r.Field).join(', '));
   }
-
-  // Check conversations table
+ 
   db.query('DESCRIBE conversations', (err2, results2) => {
     if (err2) {
       console.log('❌ Conversations table NOT found');
@@ -19,8 +17,7 @@ db.query('DESCRIBE messages', (err, results) => {
       console.log('✅ Conversations table exists');
       console.log('   Columns:', results2.map(r => r.Field).join(', '));
     }
-
-    // Check users table
+ 
     db.query('SELECT COUNT(*) as user_count FROM users', (err3, results3) => {
       if (err3) {
         console.log('❌ Users table error');

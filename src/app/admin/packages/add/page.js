@@ -155,8 +155,7 @@ export default function AddPackagePage() {
               className="w-full border border-gray-400 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
             />
           </div>
-
-          {/* Image Upload */}
+ 
           <div>
             <label className="block mb-1 font-medium text-black">Package Image</label>
             <div className="flex items-center gap-3">

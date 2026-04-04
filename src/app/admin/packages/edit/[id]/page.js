@@ -25,16 +25,14 @@ export default function EditPackagePage() {
 
   const token =
     typeof window !== "undefined" ? localStorage.getItem("token") : null;
-
-  // Fetch services
+ 
   useEffect(() => {
     fetch("http://localhost:5001/services")
       .then((res) => res.json())
       .then((data) => setServices(Array.isArray(data) ? data : []))
       .catch(() => setServices([]));
   }, []);
-
-  // Fetch package
+ 
   useEffect(() => {
     if (!id) return;
 
@@ -78,8 +76,7 @@ export default function EditPackagePage() {
 
     fetchPackage();
   }, [id]);
-
-  // Toggle service
+ 
   const handleServiceToggle = (id) => {
     const numId = Number(id);
 
@@ -89,8 +86,7 @@ export default function EditPackagePage() {
         : [...prev, numId]
     );
   };
-
-  // Handle image change
+ 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -100,8 +96,7 @@ export default function EditPackagePage() {
     const previewUrl = URL.createObjectURL(file);
     setPreview(previewUrl);
   };
-
-  // Submit
+ 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -190,8 +185,7 @@ export default function EditPackagePage() {
          <form
       onSubmit={handleSubmit}
       className="bg-white p-6 rounded-xl shadow-[0_4px_6px_-1px_rgba(236,72,153,0.4),0_2px_4px_-1px_rgba(236,72,153,0.06)]"
-    >
-          {/* Name */}
+    > 
           <div className="mb-4">
             <label className="block mb-1 font-medium text-black">
               Package Name *
@@ -203,8 +197,7 @@ export default function EditPackagePage() {
               className="w-full border border-gray-400 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
             />
           </div>
-
-          {/* Description */}
+ 
           <div className="mb-4">
             <label className="block mb-1 font-medium text-black">
               Description
@@ -216,8 +209,7 @@ export default function EditPackagePage() {
               rows={3}
             />
           </div>
-
-          {/* Price */}
+ 
           <div className="mb-4">
             <label className="block mb-1 font-medium text-black">
               Price (Rs.) *
@@ -229,8 +221,7 @@ export default function EditPackagePage() {
               className="w-full border border-gray-400 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
             />
           </div>
-
-          {/* Duration */}
+ 
           <div className="mb-4">
             <label className="block mb-1 font-medium text-black">
               Duration (days) *
@@ -242,8 +233,7 @@ export default function EditPackagePage() {
               className="w-full border border-gray-400 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
             />
           </div>
-
-          {/* Image */}
+ 
           <div className="mb-4">
             <label className="block mb-1 font-medium text-black">
               Package Image
@@ -280,8 +270,7 @@ export default function EditPackagePage() {
               />
             )}
           </div>
-
-          {/* Services */}
+ 
           <div className="mb-4">
             <label className="block mb-2 font-medium text-black">
               Select Services *

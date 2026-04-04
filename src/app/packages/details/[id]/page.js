@@ -57,8 +57,7 @@ export default function PackageDetailsPage() {
           <h1 className="text-3xl font-bold text-center mb-10 bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-purple-500">
             {pkg.name} - Details
           </h1>
-
-          {/* Package Image */}
+ 
           {pkg.image && (
             <img
               src={`http://localhost:5001/uploads/packages/${pkg.image}`}
@@ -70,15 +69,13 @@ export default function PackageDetailsPage() {
           <p className="text-gray-700 text-lg font-medium mb-6">{pkg.description}</p>
 
           <p className="text-pink-500 text-2xl font-bold mb-6">Included Services in this package </p>
-
-          {/* Services Grid */}
+ 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {pkg.services?.map((s) => (
               <div
                 key={s.id}
                 className="border rounded p-4 bg-white flex flex-col shadow-[0_4px_6px_-1px_rgba(236,72,153,0.4),0_2px_4px_-1px_rgba(236,72,153,0.06)] hover:shadow-lg transition-shadow duration-300"
-              >
-                {/* Service Image */}
+              > 
                 {s.image ? (
                   <img
                     src={`http://localhost:5001${s.image}`}
@@ -95,17 +92,14 @@ export default function PackageDetailsPage() {
                   {s.name}
                 </h3>
 
-                <p className="text-gray-600 mb-2">{s.description}</p>
-
-                
+                <p className="text-gray-600 mb-2">{s.description}</p> 
               </div>
             ))}
           </div>
-
-          {/* Total Price */}
+ 
           <div className="mt-6 text-right font-semibold text-pink-500 text-lg">
-  Total: Rs. {pkg.price}
-</div>
+            Total: Rs. {pkg.price}
+          </div>
 
           <div className="flex justify-center mt-4">
 
@@ -115,8 +109,7 @@ export default function PackageDetailsPage() {
           >
             Book an Appointment
           </button>
-          </div>
-
+          </div> 
         </main>
         <Footer />
       </div>

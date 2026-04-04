@@ -1,7 +1,7 @@
-"use client"; // Add this to mark the component as a Client Component
+"use client"; 
 
 import { useState, useEffect } from "react";
-import { jwtDecode } from "jwt-decode"; // Correct way to import jwt-decode
+import { jwtDecode } from "jwt-decode";
 import Chat from "@/components/Chat";
 
 export default function AdminChatPage() {
@@ -10,8 +10,7 @@ export default function AdminChatPage() {
 
   useEffect(() => {
     console.log("🔐 Admin chat page useEffect running...");
-    
-    // Get the JWT token from localStorage (or cookies)
+     
     const token = localStorage.getItem("token");
     
     console.log("📦 Token from localStorage:", token ? "✅ Found" : "❌ Not found");
@@ -20,15 +19,13 @@ export default function AdminChatPage() {
     if (token) {
       try {
         console.log("🔓 Attempting to decode token...");
-        // Decode the JWT token
-        const decodedToken = jwtDecode(token);  // Decode the token
+        const decodedToken = jwtDecode(token);  
         console.log("✅ Token decoded successfully");
         console.log("📋 Decoded token:", decodedToken);
-
-        // Extract the admin ID from the decoded token
+ 
         if (decodedToken.role === "admin") {
           console.log("👤 Admin role confirmed, setting adminId:", decodedToken.id);
-          setAdminId(decodedToken.id);  // Use 'id' from token, not 'userId'
+          setAdminId(decodedToken.id);  
         } else {
           console.warn("⚠️ User does not have admin role. Role:", decodedToken.role);
         }
@@ -40,7 +37,7 @@ export default function AdminChatPage() {
       console.warn("⚠️ No auth token found in localStorage");
     }
     setLoading(false);
-  }, []); // This effect runs once after the component mounts
+  }, []); 
 
   if (loading) {
     return <p className="text-center mt-4">Loading...</p>;

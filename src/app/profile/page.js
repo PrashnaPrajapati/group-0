@@ -7,8 +7,7 @@ import TextInput from "@/components/TextInput";
 import PasswordInput from "@/components/PasswordInput";
 import Button from "@/components/Button";
 import {User, Mail, Phone, MapPin, Lock} from "lucide-react";
-
-
+ 
 export default function ProfilePage() {
   const [profile, setProfile] = useState({
     fullName: "",
@@ -16,20 +15,18 @@ export default function ProfilePage() {
     phone: "",
     gender: "",
     address: "",
-    photoUrl: "", // profile photo
+    photoUrl: "", 
   });
   const [passwords, setPasswords] = useState({ currentPassword: "", newPassword: "" });
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [loadingPassword, setLoadingPassword] = useState(false);
   const [token, setToken] = useState(null);
-
-  // Get token
+ 
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
     if (storedToken) setToken(storedToken);
   }, []);
-
-  // Fetch profile
+ 
   useEffect(() => {
     if (!token) return;
     const fetchProfile = async () => {
@@ -40,26 +37,25 @@ export default function ProfilePage() {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.message || `Request failed with status ${res.status}`);
-
-        // prepend backend URL to photo if exists
+ 
         if (data.photoUrl && !data.photoUrl.startsWith("http")) {
           data.photoUrl = `http://localhost:5001${data.photoUrl}`;
         }
 
         setProfile({
-  fullName: data.fullName || "",
-  email: data.email || "",
-  phone: data.phone || "",
-  gender: data.gender || "",
-  address: data.address || "",
-  photoUrl: data.photoUrl || "",});
-      } catch (err) {
-        toast.error("Failed to load profile");
-        console.error(err);
-      } finally {
-        setLoadingProfile(false);
-      }
-    };
+          fullName: data.fullName || "",
+          email: data.email || "",
+          phone: data.phone || "",
+          gender: data.gender || "",
+          address: data.address || "",
+          photoUrl: data.photoUrl || "",});
+              } catch (err) {
+                toast.error("Failed to load profile");
+                console.error(err);
+              } finally {
+                setLoadingProfile(false);
+              }
+            };
     fetchProfile();
   }, [token]);
 
@@ -139,14 +135,12 @@ export default function ProfilePage() {
 return (
   <div className="min-h-screen bg-pink-50 p-8 flex flex-col items-center space-y-8">
     <ToastContainer position="top-center" />
-
-    {/* Heading */}
+ 
     <div className="text-center space-y-2">
       <h1 className="text-4xl font-bold text-gray-800">My Profile</h1>
       <p className="text-gray-600 text-lg">Manage and Edit your personal information</p>
     </div>
-
-    {/* Profile Photo + Editable Info */}
+ 
     <div className="bg-white border border-pink-200 p-8 rounded-3xl shadow-lg w-full max-w-5xl flex flex-col md:flex-row md:items-center md:space-x-12 space-y-6 md:space-y-0">
       <div className="flex flex-col items-center space-y-4">
         <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-gray-300">
@@ -195,8 +189,7 @@ return (
         </Button>
       </div>
     </div>
-
-    {/* Read-Only Personal Info Box */}
+ 
     <div className="bg-white border border-pink-200 p-8 rounded-3xl shadow-lg w-full max-w-5xl flex flex-col md:flex-row md:space-x-8 space-y-4 md:space-y-0">
       <div className="flex-1 space-y-2">
         <h2 className="font-semibold text-xl text-gray-800">Personal Information</h2>
@@ -207,8 +200,7 @@ return (
         <TextInput label="Address" value={profile.address || ""} disabled icon={MapPin} />
       </div>
     </div>
-
-    {/* Change Password Box */}
+ 
     <div className="bg-white border border-pink-200 p-8 rounded-3xl shadow-lg w-full max-w-5xl flex flex-col md:flex-row md:space-x-8 space-y-4 md:space-y-0">
       <div className="flex-1 space-y-4">
         <h2 className="font-semibold text-xl text-gray-800">Change Password</h2>

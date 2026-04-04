@@ -68,8 +68,7 @@ export default function UserServicesPage() {
               Book your favorite treatments and enjoy a pampering experience anytime.
             </p>
           </div>
-
-          {/* TAB SWITCHER */}
+ 
           <div className="flex justify-center mb-8">
             <div className="flex bg-white border border-pink-200 rounded-full shadow-sm p-1">
 
@@ -88,8 +87,7 @@ export default function UserServicesPage() {
 
             </div>
           </div>
-
-          {/* FILTER BOX */}
+ 
           <div className="max-w-7xl mx-auto mb-8 bg-white p-6 rounded-xl shadow-sm border border-pink-200 flex flex-col md:flex-row gap-4">
 
             <input
@@ -123,18 +121,14 @@ export default function UserServicesPage() {
               <option value="massage">Massage</option>
               <option value="body grooming">Body Grooming</option>
               <option value="spa">Spa</option>
-            </select>
-
+            </select> 
           </div>
           
           <div className="mb-6 px-6">
          <p className="text-gray-600 font-bold text-xl bold mt-1">
             Explore our range of beauty services designed just for you.
          </p>
-        </div>
-       
-                       
-          {/* SERVICES GRID */}
+        </div> 
           {loading ? (
             <p className="text-center text-gray-500">Loading services...</p>
           ) : filteredServices.length === 0 ? (

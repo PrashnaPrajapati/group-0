@@ -158,23 +158,18 @@ export default function AdminDashboard() {
     Admin Dashboard
   </span>
 </h1>
-
-  {/* Stack vertically */}
+ 
   <div className="flex flex-col gap-1 text-gray-600">
     <p className="text-2xl font-medium">Welcome back, Admin!</p>
     <p className="text-md">Manage your services, bookings, and analytics</p>
   </div>
-
-
-        {/* Dashboard Stats */}
+ 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card title="Total Services" value={stats?.totalServices} />
           <Card title="Total Packages" value={stats?.totalPackages} />
           <Card title="Total Bookings" value={stats?.totalBookings} />
           <Card title="Total Users" value={stats?.totalUsers} />
-        </div>
-
-        {/* Dashboard Charts */}
+        </div> 
         <div className="grid md:grid-cols-2 gap-8 mt-6">
 
           <ChartCard title="Monthly Bookings">
@@ -209,7 +204,6 @@ export default function AdminDashboard() {
             )}
           </ChartCard>
           
-
           <ChartCard title="Service Category Distribution">
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
@@ -225,7 +219,7 @@ export default function AdminDashboard() {
             </ResponsiveContainer>
           </ChartCard>
 
-          <ChartCard title="AI Sentiment Analysis">
+          <ChartCard title={<span style={{ color: "#000000" }}>AI Sentiment Analysis</span>}>
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={sentimentData}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -235,11 +229,9 @@ export default function AdminDashboard() {
                 <Bar dataKey="count" fill="#ec4899" />
               </BarChart>
             </ResponsiveContainer>
-          </ChartCard>
-
+          </ChartCard> 
         </div>
-
-        {/* Tabs */}
+ 
         <div className="bg-gray-100 rounded-full p-2 flex md:w-3/4 mx-auto mt-8 text-gray-600">
           {["services","packages","bookings","feedback"].map(tab => (
             <button
@@ -250,31 +242,26 @@ export default function AdminDashboard() {
               {tab.charAt(0).toUpperCase()+tab.slice(1)}
             </button>
           ))}
-        </div>
-
-        {/* Tab Content */}
-        {/* Tab Content */}
-<div className="text-pink-400">
-  {activeTab === "services" && (
-    <TabContent title="Top 5 Services" items={servicesList} type="services" />
-  )}
-  {activeTab === "packages" && (
-    <TabContent title="Top 5 Packages" items={packagesList} type="packages" />
-  )}
-  {activeTab === "bookings" && (
-    <TabContent title="Top 5 Bookings" items={bookingsList} type="bookings" />
-  )}
-  {activeTab === "feedback" && (
-    <TabContent title="All Feedbacks" items={feedbackList} type="feedback" />
-  )}
-</div>
-
-      </div>
-    </AdminSidebar>
-  );
-}
-
-// Stats card
+        </div> 
+          <div className="text-pink-400">
+            {activeTab === "services" && (
+              <TabContent title="Top 5 Services" items={servicesList} type="services" />
+            )}
+            {activeTab === "packages" && (
+              <TabContent title="Top 5 Packages" items={packagesList} type="packages" />
+            )}
+            {activeTab === "bookings" && (
+              <TabContent title="Top 5 Bookings" items={bookingsList} type="bookings" />
+            )}
+            {activeTab === "feedback" && (
+              <TabContent title="All Feedbacks" items={feedbackList} type="feedback" />
+            )}
+          </div>
+                </div>
+              </AdminSidebar>
+            );
+          }
+ 
 function Card({ title, value }) {
   return (
     <div className="bg-white p-6 rounded-xl shadow-[0_4px_6px_-1px_rgba(236,72,153,0.4),0_2px_4px_-1px_rgba(236,72,153,0.06)] text-center">
@@ -283,8 +270,7 @@ function Card({ title, value }) {
     </div>
   );
 }
-
-// Chart wrapper
+ 
 function ChartCard({ title, children }) {
   return (
     <div className="bg-white p-6 rounded-xl shadow">
@@ -293,8 +279,7 @@ function ChartCard({ title, children }) {
     </div>
   );
 }
-
-// Tab content component
+ 
 function TabContent({ title, items, type }) {
   if (!items || items.length === 0) {
     return <div className="bg-white p-10 rounded-xl shadow text-center text-gray-500 mt-6">No data found.</div>;
@@ -356,11 +341,9 @@ function TabContent({ title, items, type }) {
                       value={item.status}
                       onChange={(e) => {
                         const newStatus = e.target.value;
-                        // Optimistic update
                         const updatedBookings = [...items];
                         updatedBookings[index] = {...item, status: newStatus};
-                        items = updatedBookings; // update local variable for rendering
-                        // Update backend
+                        items = updatedBookings; 
                         fetch(`http://localhost:5001/admin/bookings/${item.id}/status`, {
                           method: "PUT",
                           headers: {

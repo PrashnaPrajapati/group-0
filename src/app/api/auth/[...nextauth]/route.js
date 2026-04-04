@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
-import db from "../../../../../backend/db"; // your database connection
+import db from "../../../../../backend/db"; 
 
 export const authOptions = {
   providers: [
@@ -11,19 +11,16 @@ export const authOptions = {
   ],
   secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
-    async signIn({ user, account, profile }) {
-      // Check if the user exists
+    async signIn({ user, account, profile }) { 
       const [existing] = await db.promise().query(
         "SELECT id FROM users WHERE email = ?",
         [user.email]
       );
 
-      if (existing.length > 0) {
-        // User already exists, let them login
+      if (existing.length > 0) { 
         return true;
       }
-
-      // If not, insert new Google user
+ 
       await db.promise().query(
         "INSERT INTO users (fullName, email, role, photoUrl, created_at) VALUES (?, ?, 'users', ?, NOW())",
         [user.name, user.email, user.image]

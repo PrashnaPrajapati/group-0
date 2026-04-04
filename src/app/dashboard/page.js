@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
-
-// Helper to decode JWT and extract payload
+ 
 function parseJwt(token) {
   try {
     return JSON.parse(atob(token.split(".")[1]));
@@ -18,34 +17,29 @@ export default function UserDashboard() {
   const [bookings, setBookings] = useState({ upcoming: [], completed: [], cancelled: [] });
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(null);
-  const [userId, setUserId] = useState(null); // New state for dynamic userId
+  const [userId, setUserId] = useState(null); 
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState("upcoming");
-
-  // Modal states
+ 
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [currentBooking, setCurrentBooking] = useState(null);
-
-  // Reschedule fields
+ 
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("");
   const [newLocation, setNewLocation] = useState("");
   const [homeAddress, setHomeAddress] = useState(""); 
   const [reason, setReason] = useState(""); 
   const [bookedSlots, setBookedSlots] = useState([]);
-
-  // Cancel modal fields
+ 
   const [reasonCustom, setReasonCustom] = useState("");
-
-  // Feedback fields
+ 
   const [rating, setRating] = useState(0);
   const [feedbackText, setFeedbackText] = useState("");
 
   const timeSlots = ["09:00","10:00","11:00","12:00","14:00","15:00","16:00","17:00","18:00"];
-
-  // Fetch bookings
+ 
   useEffect(() => {
     setMounted(true);
     const t = localStorage.getItem("token");
@@ -55,8 +49,7 @@ export default function UserDashboard() {
       setLoading(false);
       return;
     }
-
-    // Decode JWT to get userId
+ 
     const decoded = parseJwt(t);
     if (decoded && decoded.id) setUserId(decoded.id);
 
@@ -76,12 +69,12 @@ export default function UserDashboard() {
             address: booking.address,
             location_type: booking.location_type || "salon",
             services: booking.package_id
-  ? [{ name: booking.package_name, price: booking.package_price }]
-  : [{ name: booking.service_name, price: booking.service_price }],
+              ? [{ name: booking.package_name, price: booking.package_price }]
+              : [{ name: booking.service_name, price: booking.service_price }],
 
-total_amount: booking.package_id
-  ? booking.package_price
-  : booking.service_price,
+            total_amount: booking.package_id
+              ? booking.package_price
+              : booking.service_price,
             feedback_submitted: booking.feedback_submitted || false,
           });
           return acc;
@@ -100,8 +93,7 @@ total_amount: booking.package_id
   if (!token) return <p className="p-6 text-red-500">You must be logged in.</p>;
 
   const filteredBookings = bookings[activeTab];
-
-  // ------------------ RESCHEDULE HANDLERS ------------------
+ 
   const openRescheduleModal = (booking) => {
     setCurrentBooking(booking);
     setNewDate(booking.booking_date.split("T")[0]);
@@ -164,8 +156,7 @@ total_amount: booking.package_id
       alert("Something went wrong");
     }
   };
-
-  // ------------------ CANCEL HANDLERS ------------------
+ 
   const openCancelModal = (booking) => {
     setCurrentBooking(booking);
     setReason("");
@@ -188,8 +179,7 @@ total_amount: booking.package_id
 
       const data = await res.json();
       if (!res.ok) return alert(data.message || "Cancel failed");
-
-      // Update bookings state
+ 
       setBookings(prev => {
         const updatedBookings = { ...prev };
         updatedBookings.cancelled.push({ ...currentBooking, status: "cancelled" });
@@ -205,8 +195,7 @@ total_amount: booking.package_id
       alert("Something went wrong");
     }
   };
-
-  // ------------------ FEEDBACK HANDLERS ------------------
+ 
   const openFeedbackModal = (booking) => {
     setCurrentBooking(booking);
     setRating(0);
@@ -251,8 +240,7 @@ total_amount: booking.package_id
       alert("Something went wrong. Please try again.");
     }
   };
-
-  // ------------------ RENDER ------------------
+ 
   return (
     <div className="min-h-screen bg-[#fff7fa]">
       <Sidebar />
@@ -261,8 +249,7 @@ total_amount: booking.package_id
           <h1 className="text-3xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-purple-500">
             My Dashboard
           </h1>
-
-          {/* Tabs */}
+ 
           <div className="flex gap-6 mb-6 border-b border-gray-200">
             {["upcoming", "completed", "cancelled"].map((tab) => (
               <button
@@ -274,8 +261,7 @@ total_amount: booking.package_id
               </button>
             ))}
           </div>
-
-          {/* Bookings */}
+ 
           {loading ? (
             <p className="text-gray-500">Loading your bookings...</p>
           ) : filteredBookings.length === 0 ? (
@@ -290,9 +276,9 @@ total_amount: booking.package_id
 
                   <h2 className="text-lg font-semibold text-gray-800 mb-1">
                     {b.package_id
-  ? `Package: ${b.services[0].name}`
-  : b.services.map((s) => s.name).join(", ")
-}
+                      ? `Package: ${b.services[0].name}`
+                      : b.services.map((s) => s.name).join(", ")
+                    }
                   </h2>
                   <p className="text-gray-500 text-sm mb-2">Booking ID: {b.id}</p>
 
@@ -303,8 +289,7 @@ total_amount: booking.package_id
                     <hr className="my-2" />
                     <p className="text-base font-bold text-pink-400">Total Amount: Rs.{b.total_amount}</p>
                   </div>
-
-                  {/* Upcoming */}
+ 
                   {b.status === "upcoming" && (
                     <div className="flex gap-2">
                       <button onClick={() => openRescheduleModal(b)} className="flex-1 py-2 px-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded hover:scale-105 transition">
@@ -315,8 +300,7 @@ total_amount: booking.package_id
                       </button>
                     </div>
                   )}
-
-                  {/* Completed without feedback */}
+ 
                   {b.status === "completed" && !b.feedback_submitted && (
                     <div className="flex gap-2">
                       <button onClick={() => openFeedbackModal(b)} className="flex-1 py-2 px-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded hover:scale-105 transition">
@@ -328,9 +312,7 @@ total_amount: booking.package_id
               ))}
             </div>
           )}
-
-          {/* RESCHEDULE MODAL */}
-          {/* Same as before, you can keep the existing reschedule modal logic */}
+ 
           {showRescheduleModal && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
               <div className="bg-white p-6 rounded-xl w-96 max-h-[90vh] overflow-y-auto">
@@ -429,10 +411,7 @@ total_amount: booking.package_id
               </div>
             </div>
           )}
-
-
-          {/* CANCEL MODAL */}
-          {/* Same as before, you can keep the existing cancel modal logic */}
+ 
            {showCancelModal && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
               <div className="bg-white p-6 rounded-xl w-96 max-h-[90vh] overflow-y-auto">
@@ -495,8 +474,7 @@ total_amount: booking.package_id
               </div>
             </div>
           )}
-
-          {/* FEEDBACK MODAL */}
+ 
           {showFeedbackModal && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
               <div className="bg-white p-6 rounded-xl w-96 max-h-[90vh] overflow-y-auto">

@@ -19,11 +19,7 @@ const io = socketIo(server, {
     origin: "*",  
     methods: ["GET", "POST"]
   }
-});
-
-
-let users = {};
-let admin = {};
+}); 
 
 const fs = require("fs");
 const uploadDir = "uploads";
@@ -48,8 +44,7 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS,
   },
 });
-
-
+ 
 app.post("/signup", async (req, res) => {
   try {
     const { fullName, phone, email, password, gender } = req.body;
@@ -58,13 +53,11 @@ app.post("/signup", async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    
     const nameRegex = /^[A-Za-z]+([ '-][A-Za-z]+)+$/;
     if (!nameRegex.test(fullName.trim())) {
       return res.status(400).json({ message: "Full name must be at least 2 words and letters only" });
     }
 
-  
     const allowedProviders = [
       "gmail", "yahoo", "hotmail", "outlook", "icloud",
       "aol", "protonmail", "zoho", "gmx", "mail"
@@ -84,15 +77,13 @@ app.post("/signup", async (req, res) => {
     const phoneDigits = phone.replace(/\D/g, "");
     if (!/^\d{10}$/.test(phoneDigits)) {
       return res.status(400).json({ message: "Phone number must be exactly 10 digits" });
-    }
-
+    } 
     
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
     if (!passwordRegex.test(password)) {
       return res.status(400).json({ message: "Password must be 8+ characters with uppercase, lowercase, and a number" });
     }
  
-  
     const [existingEmail] = await db.promise().query(
       "SELECT id FROM users WHERE email = ?",
       [email.trim()]
@@ -109,9 +100,7 @@ app.post("/signup", async (req, res) => {
       return res.status(400).json({ message: "Phone number already exists" });
     }
 
-  
-    const hashedPassword = await bcrypt.hash(password, 10);
-
+    const hashedPassword = await bcrypt.hash(password, 10); 
    
     await db.promise().query(
       "INSERT INTO users (fullName, phone, email, password, gender) VALUES (?, ?, ?, ?, ?)",
@@ -125,8 +114,7 @@ app.post("/signup", async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 }); 
-
-
+ 
 app.post("/login", async (req, res) => {
   try {
     let { email, password } = req.body;
@@ -135,11 +123,9 @@ app.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Email and password are required" });
     }
 
-   
     email = email.trim();
     password = password.trim();
 
-   
     const allowedProviders = [
       "gmail", "yahoo", "hotmail", "outlook", "icloud",
       "aol", "protonmail", "zoho", "gmx", "mail"
@@ -167,13 +153,11 @@ app.post("/login", async (req, res) => {
 
     const user = users[0];
 
-    
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
       return res.status(401).json({ message: "Incorrect password" });
     }
 
-    
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role || "user" },
       process.env.SECRET_KEY,
@@ -195,10 +179,7 @@ app.post("/login", async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 });
-
-
  
-
 app.post("/forgot-password", (req, res) => { 
   const { email } = req.body; 
   if (!email) return res.status(400).json({ message: "Email required" });
@@ -208,12 +189,8 @@ app.post("/forgot-password", (req, res) => {
     if (results.length === 0)
       return res.json({ message: "If the email is registered, instructions sent" });
 
-    const user = results[0];
-
-  
-    const resetToken = jwt.sign({ id: user.id }, process.env.SECRET_KEY, { expiresIn: "15m" });
-
-    
+    const user = results[0]; 
+    const resetToken = jwt.sign({ id: user.id }, process.env.SECRET_KEY, { expiresIn: "15m" }); 
     const resetTokenSafe = encodeURIComponent(resetToken);
 
    
@@ -226,7 +203,6 @@ app.post("/forgot-password", (req, res) => {
         const resetLink = `http://localhost:3000/reset-password?token=${resetTokenSafe}`;
         console.log("Password reset link:", resetLink);
 
-        
         transporter.sendMail({
           from: process.env.EMAIL_USER,
           to: email,
@@ -297,10 +273,8 @@ app.post("/reset-password", async (req, res) => {
 app.get("/", (req, res) => {
   res.send("Chat server is running!");
 });
-
-// Initialize chat system
-initializeChat(io);
-
+ 
+initializeChat(io); 
  
 const getReceiverByRole = (receiverId, senderRole) => {
   return new Promise((resolve, reject) => {
@@ -416,6 +390,7 @@ app.post("/admin/services",verifyAdmin,serviceUpload.single("image"),
     );
   }
 );
+
 app.get("/admin/services", verifyAdmin, (req, res) => {
   db.query("SELECT * FROM services", (err, results) => {
     if (err) return res.status(500).json({ message: "DB error" });
@@ -527,8 +502,7 @@ app.get("/profile", verifyUser, (req, res) => {
     res.json(results[0]);
   }
 );
-});
-
+}); 
 
 app.put("/profile", verifyUser, (req, res) => {
   const userId = req.user.id;
@@ -562,9 +536,7 @@ app.post("/google-login", async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const user = results[0];
-
-    // ✅ Generate SAME JWT as normal login
+    const user = results[0]; 
     const token = jwt.sign(
       { id: user.id, role: user.role },
       process.env.SECRET_KEY,
@@ -584,8 +556,7 @@ app.post("/google-login", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
-
-
+ 
 app.put("/profile/change-password", verifyUser, async (req, res) => {
   const userId = req.user.id;
   const { currentPassword, newPassword } = req.body;
@@ -609,8 +580,7 @@ app.put("/profile/change-password", verifyUser, async (req, res) => {
     });
   });
 });
-
-
+ 
 app.put("/profile/photo", verifyUser, upload.single("photo"), (req, res) => {
   try {
     if (!req.user || !req.user.id) {
@@ -653,8 +623,7 @@ app.put("/profile/photo", verifyUser, upload.single("photo"), (req, res) => {
 app.post("/bookings", verifyUser, (req, res) => {
   const { service_ids, package_id, booking_date, booking_time, notes, location_type, address } = req.body;
   const user_id = req.user.id;
-
-  // ✅ Validate
+ 
   if (!booking_date || !booking_time) {
     return res.status(400).json({ message: "Date and time are required" });
   }
@@ -662,15 +631,11 @@ app.post("/bookings", verifyUser, (req, res) => {
   if (!location_type || (location_type === "home" && !address)) {
     return res.status(400).json({ message: "Location and address are required" });
   }
-
-  // ✅ Must have either service OR package
+ 
   if ((!service_ids || service_ids.length === 0) && !package_id) {
     return res.status(400).json({ message: "Select at least one service or a package" });
   }
-
-  // --------------------------
-  // ✅ PACKAGE BOOKING
-  // --------------------------
+ 
   if (package_id) {
     db.query(
       `INSERT INTO bookings 
@@ -685,14 +650,10 @@ app.post("/bookings", verifyUser, (req, res) => {
           bookingId: result.insertId,
         });
       }
-    );
-
+    ); 
     return;
   }
-
-  // --------------------------
-  // ✅ SERVICE BOOKING
-  // --------------------------
+ 
   const insertedBookingIds = [];
 
   const insertNext = (index) => {
@@ -900,8 +861,7 @@ app.get("/bookings/booked-slots", (req, res) => {
       res.json(uniqueBlockedSlots);
     }
   );
-});
-
+}); 
 
 app.post("/bookings/:id/feedback", verifyUser, async (req, res) => {
   const bookingId = req.params.id;
@@ -979,8 +939,7 @@ app.get("/bookings/:id/feedback", async (req, res) => {
     res.status(500).json({ message: "Database error", error: err.message });
   }
 });
-
-// Admin list all feedbacks
+ 
 app.get("/feedback", verifyAdmin, async (req, res) => {
   try {
     const [rows] = await db.promise().query(
@@ -1209,8 +1168,7 @@ app.get("/packages/:id", (req, res) => {
     }
   );
 });
-
-
+ 
 app.put("/admin/packages/:id", verifyAdmin, (req, res) => {
   const { name, description, price, duration, status, service_ids } = req.body;
   const package_id = req.params.id;
@@ -1345,9 +1303,7 @@ app.post("/bookings/package", verifyUser, (req, res) => {
     }
   );
 });
-
-
-
+ 
   app.get("/admin/stats", verifyAdmin, async (req, res) => {
   try {
     const [users] = await db.promise().query(`SELECT COUNT(id) AS totalUsers FROM users`);
@@ -1442,8 +1398,7 @@ app.get("/admin/ai-sentiment", verifyAdmin, async (req, res) => {
           counts.neutral += 1;
         }
       } catch (error) {
-        console.error("Error analyzing sentiment for text:", feedbackText, error);
-        // Default to neutral on error
+        console.error("Error analyzing sentiment for text:", feedbackText, error); 
         counts.neutral += 1;
       }
     });
@@ -1458,8 +1413,7 @@ app.get("/admin/ai-sentiment", verifyAdmin, async (req, res) => {
     res.status(500).json({ message: "Error fetching sentiment data", error: err.message });
   }
 });
-
-// Admin list detailed feedback with sentiment for AI sentiment page
+ 
 app.get("/admin/ai-sentiment-details", verifyAdmin, async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
@@ -1499,8 +1453,7 @@ app.get("/admin/ai-sentiment-details", verifyAdmin, async (req, res) => {
         else if (compound <= -0.05) label = "negative";
       } catch (e) {
         console.error("Sentiment analysis error for text:", text, e);
-        // Keep default neutral
-      }
+      } 
 
       return {
         id: entry.id,
@@ -1560,8 +1513,7 @@ app.post("/payment", (req, res) => {
     }
   });
 });
-
-
+ 
 app.patch("/bookings/confirm", verifyUser, (req, res) => {
   const { bookingIds } = req.body; 
   const user_id = req.user.id;
@@ -1571,8 +1523,7 @@ app.patch("/bookings/confirm", verifyUser, (req, res) => {
   if (!bookingIds || !Array.isArray(bookingIds) || bookingIds.length === 0) {
     return res.status(400).json({ message: "No booking IDs provided" });
   }
-  
-  // First check if bookings exist
+ 
   db.query(
     `SELECT id, status, user_id FROM bookings WHERE id IN (?) AND user_id = ?`,
     [bookingIds, user_id],
@@ -1591,8 +1542,7 @@ app.patch("/bookings/confirm", verifyUser, (req, res) => {
           user_id: user_id
         });
       }
-
-      // Now update to confirmed
+ 
       db.query(
         `UPDATE bookings 
          SET status = 'confirmed' 
@@ -1623,8 +1573,7 @@ app.patch("/bookings/confirm", verifyUser, (req, res) => {
     }
   );
 });
-
-// Payments routes
+ 
 const paymentsRouter = require("./payments");
 app.use("/payments", paymentsRouter);
 
@@ -1652,20 +1601,18 @@ app.post("/payments/save-transaction", async (req, res) => {
     res.status(500).json({ message: "Failed to save transaction" });
   }
 });
-
-// API endpoint for sentiment analysis
+ 
 app.post("/api/sentiment", (req, res) => {
-  const { text } = req.body;  // Get text from the request body
+  const { text } = req.body;  
   
   if (!text) {
     return res.status(400).json({ message: "Text is required" });
   }
 
-  const result = analyzeSentiment(text);  // Analyze the sentiment of the text
-  res.json(result);  // Return the sentiment result
+  const result = analyzeSentiment(text);  
+  res.json(result); 
 });
 
- 
 server.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
   console.log(`Socket.io ready at http://localhost:${port}`);

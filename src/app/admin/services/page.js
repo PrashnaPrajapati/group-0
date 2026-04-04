@@ -109,10 +109,10 @@ export default function AdminServicesPage() {
     return <div className="p-10 text-center text-gray-500">Loading services...</div>;
  
   return (
-    <div className="flex min-h-screen bg-gray-50"> {/* Full height and light background */}
-      <AdminSidebar /> {/* Sidebar */}
+    <div className="flex min-h-screen bg-gray-50"> 
+      <AdminSidebar /> 
 
-      <main className="flex-1 p-8"> {/* Main content flex-1 */}
+      <main className="flex-1 p-8"> 
         <ToastContainer position="top-center" />
 
         {/* Header */}
@@ -125,22 +125,20 @@ export default function AdminServicesPage() {
           </button>
 
           <div className="text-center mb-6">
-  <h1 className="text-3xl font-bold">
-    <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
-      Service Management
-    </span>
-  </h1>
+            <h1 className="text-3xl font-bold">
+              <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
+                Service Management
+              </span>
+            </h1>
 
-  <p className="text-gray-500 mt-2">
-    Manage all services efficiently from one place
-  </p>
-  <p className="text-gray-500 text-md mt-1">
-    Easily add new services, update details, control status, and ensure everything runs smoothly
-  </p>
-  
-</div>
+            <p className="text-gray-500 mt-2">
+              Manage all services efficiently from one place
+            </p>
+            <p className="text-gray-500 text-md mt-1">
+              Easily add new services, update details, control status, and ensure everything runs smoothly
+            </p>
+          </div>
           
-
           <button
             onClick={() => router.push("/admin/services/add")}
             className="text-white px-5 py-2 rounded-full bg-gradient-to-r from-pink-500 to-purple-500"
@@ -148,8 +146,7 @@ export default function AdminServicesPage() {
             + Add Service
           </button>
         </div>
-
-        {/* Table */}
+ 
         <div className="bg-white rounded-xl shadow-[0_4px_6px_-1px_rgba(236,72,153,0.4),0_2px_4px_-1px_rgba(236,72,153,0.06)] border overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-pink-50 text-gray-700">
@@ -213,8 +210,7 @@ export default function AdminServicesPage() {
             </tbody>
           </table>
         </div>
-
-        {/* Pagination */}
+ 
         <div className="mt-4 flex justify-center gap-4">
           <button
             onClick={handlePrevPage}

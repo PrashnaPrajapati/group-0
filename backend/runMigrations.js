@@ -1,7 +1,6 @@
 const mysql = require("mysql2");
 require("dotenv").config();
-
-// Database connection
+ 
 const connection = mysql.createConnection({
   host: "localhost",
   user: "root",
@@ -15,8 +14,7 @@ connection.connect((err) => {
     process.exit(1);
   }
   console.log("✓ Connected to database");
-
-  // Messages table
+ 
   const messagesTable = `
     CREATE TABLE IF NOT EXISTS messages (
       id INT PRIMARY KEY AUTO_INCREMENT,
@@ -34,8 +32,7 @@ connection.connect((err) => {
       INDEX idx_is_read (is_read)
     );
   `;
-
-  // Conversations table
+ 
   const conversationsTable = `
     CREATE TABLE IF NOT EXISTS conversations (
       id INT PRIMARY KEY AUTO_INCREMENT,
@@ -49,8 +46,7 @@ connection.connect((err) => {
       INDEX idx_admin_id (admin_id)
     );
   `;
-
-  // Run migrations
+ 
   connection.query(messagesTable, (err) => {
     if (err) {
       console.error("Error creating messages table:", err);

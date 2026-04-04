@@ -16,9 +16,7 @@ export default function AdminSidebar({ children }) {
   const pathname = usePathname();
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-
-      {/* Sidebar */}
+    <div className="flex min-h-screen bg-gray-50"> 
       <aside className="w-64 bg-white shadow-lg flex flex-col p-6">
 
         <div className="mb-10 text-center">
@@ -53,10 +51,7 @@ export default function AdminSidebar({ children }) {
         <div className="mt-auto text-center text-gray-400 text-sm">
           &copy; 2026 Singar Glow Admin
         </div>
-
-      </aside>
-
-      {/* Main Content */}
+      </aside> 
       <main className="flex-1 p-8">
         {children}
       </main>

@@ -10,26 +10,22 @@ export async function POST(request) {
         { status: 400 }
       );
     }
-
-    // Verify payment with eSewa
+ 
     const verifyPaymentData = {
       amt: amount,
       scd: process.env.NEXT_PUBLIC_ESEWA_MERCHANT_CODE,
       rid: refId,
       pid: txnId,
     };
-
-    // Build query string for verification
+ 
     const queryString = `amt=${verifyPaymentData.amt}&pid=${verifyPaymentData.pid}&rid=${verifyPaymentData.rid}&scd=${verifyPaymentData.scd}`;
-
-    // Create Hmac SHA256 signature
+ 
     const secretKey = process.env.ESEWA_MERCHANT_SECRET;
     const signature = crypto
       .createHmac("sha256", secretKey)
       .update(queryString)
       .digest("base64");
-
-    // Call eSewa verification API
+ 
     const esewaVerifyUrl =
       process.env.NEXT_PUBLIC_ESEWA_ENVIRONMENT === "test"
         ? "https://rc.esewa.com.np/api/epay/transaction/status/"
@@ -45,10 +41,8 @@ export async function POST(request) {
 
     const verifyResult = await verifyResponse.text();
     console.log("eSewa Verification Response:", verifyResult);
-
-    // Parse eSewa response - they return status in response
-    if (verifyResult.includes("success")) {
-      // Save transaction to backend database
+ 
+    if (verifyResult.includes("success")) { 
       try {
         const saveResponse = await fetch(
           "http://localhost:5001/payments/save-transaction",
@@ -69,12 +63,10 @@ export async function POST(request) {
         );
 
         if (!saveResponse.ok) {
-          console.warn("Failed to save transaction to database");
-          // Continue anyway - payment was verified by eSewa
+          console.warn("Failed to save transaction to database"); 
         }
       } catch (saveError) {
-        console.warn("Error saving transaction:", saveError);
-        // Continue anyway - payment was verified by eSewa
+        console.warn("Error saving transaction:", saveError); 
       }
 
       return Response.json(

@@ -13,8 +13,7 @@ const Chat = ({ userId, isAdmin }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const messagesEndRef = useRef(null);
-
-  // Auto-scroll to bottom
+ 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -22,57 +21,46 @@ const Chat = ({ userId, isAdmin }) => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  // Initialize Socket.io connection
+ 
   useEffect(() => {
     if (!socket) {
       socket = io("http://localhost:5001");
     }
 
     const token = localStorage.getItem("token");
-
-    // Register user/admin with Socket.io
+ 
     if (isAdmin) {
-      socket.emit("register_admin", { adminId: userId, token });
-      // Request list of users to chat with
+      socket.emit("register_admin", { adminId: userId, token }); 
       socket.emit("get_users");
     } else {
-      socket.emit("register_user", { userId, token });
-      // For regular users, default receiver waits until admin list arrives
+      socket.emit("register_user", { userId, token }); 
       setReceiverId(null);
-    }
-
-    // Listen for message history
+    } 
     socket.on("message_history", (data) => {
       setMessages(data.messages || []);
       setLoading(false);
     });
-
-    // Listen for currently online admin list (user only)
+ 
     socket.on("admin_list", (data) => {
       if (!isAdmin && data && Array.isArray(data.adminIds) && data.adminIds.length > 0) {
         const firstAdmin = data.adminIds[0];
         console.log("🔔 Setting receiverId to first online admin:", firstAdmin);
         setReceiverId(firstAdmin);
-
-        // Load history for admin
+ 
         socket.emit("request_history", { conversationUserId: firstAdmin });
       }
     });
-
-    // Listen for new incoming messages
+ 
     socket.on("receive_message", (messageData) => {
       setMessages((prev) => [...prev, messageData]);
     });
-
-    // Listen for users list (admin only)
+ 
     socket.on("users_list", (data) => {
       setUsersList(data.users || []);
       setOnlineUsers(new Set(data.onlineUsers || []));
       setLoading(false);
     });
-
-    // Listen for online status updates
+ 
     socket.on("user_online", (data) => {
       setOnlineUsers((prev) => {
         const updated = new Set(prev);
@@ -84,16 +72,13 @@ const Chat = ({ userId, isAdmin }) => {
         return updated;
       });
     });
-
-    // Listen for errors
+ 
     socket.on("error", (errData) => {
       setError(errData.message || "An error occurred");
       console.error("Socket error:", errData);
     });
-
-    // Confirm message was sent
-    socket.on("message_sent", (messageData) => {
-      // Message already added optimistically, update with server confirmation
+ 
+    socket.on("message_sent", (messageData) => { 
       setMessages((prev) =>
         prev.map((msg) =>
           msg.message_text === messageData.message_text && !msg.id
@@ -105,8 +90,7 @@ const Chat = ({ userId, isAdmin }) => {
 
     setLoading(false);
 
-    return () => {
-      // Cleanup
+    return () => { 
       socket.off("message_history");
       socket.off("receive_message");
       socket.off("users_list");
@@ -114,19 +98,16 @@ const Chat = ({ userId, isAdmin }) => {
       socket.off("message_sent");
     };
   }, [userId, isAdmin]);
-
-  // Handle user selection (admin only)
+ 
   const handleSelectUser = (user) => {
     setSelectedUser(user);
     setReceiverId(user.id);
-    setMessages([]); // Clear messages
+    setMessages([]); 
     setLoading(true);
-    
-    // Request message history with this user
+     
     socket.emit("request_history", { conversationUserId: user.id });
   };
-
-  // Handle sending message
+ 
   const handleSendMessage = () => {
     if (!message.trim()) {
       setError("Message cannot be empty");
@@ -137,8 +118,7 @@ const Chat = ({ userId, isAdmin }) => {
       setError("No receiver selected");
       return;
     }
-
-    // Add message optimistically
+ 
     const optimisticMessage = {
       sender_id: userId,
       receiver_id: receiverId,
@@ -149,8 +129,7 @@ const Chat = ({ userId, isAdmin }) => {
     };
 
     setMessages((prev) => [...prev, optimisticMessage]);
-    
-    // Send to socket
+     
     console.log("📤 Sending message:", {
       senderId: userId,
       receiverId,
@@ -164,8 +143,7 @@ const Chat = ({ userId, isAdmin }) => {
       senderId: userId,
       senderRole: isAdmin ? "admin" : "users",
     });
-
-    // Mark messages as read
+ 
     socket.emit("mark_as_read", { conversationUserId: receiverId });
 
     setMessage("");
@@ -190,12 +168,10 @@ const Chat = ({ userId, isAdmin }) => {
       return "";
     }
   };
-
-  // Admin view - show user list and chat
+ 
   if (isAdmin) {
     return (
-      <div className="flex h-screen bg-gray-100">
-        {/* Users List Sidebar */}
+      <div className="flex h-screen bg-gray-100"> 
         <div className="w-1/4 bg-white border-r border-gray-200 overflow-y-auto">
           <div className="p-4 border-b border-gray-200">
             <h2 className="text-xl font-bold">Conversations</h2>
@@ -229,12 +205,10 @@ const Chat = ({ userId, isAdmin }) => {
             </div>
           )}
         </div>
-
-        {/* Chat Area */}
+ 
         <div className="w-3/4 flex flex-col bg-white">
           {selectedUser ? (
-            <>
-              {/* Chat Header */}
+            <> 
               <div className="p-4 border-b border-gray-200 bg-gray-50">
                 <div className="flex items-center justify-between">
                   <div>
@@ -249,8 +223,7 @@ const Chat = ({ userId, isAdmin }) => {
                   </div>
                 </div>
               </div>
-
-              {/* Messages */}
+ 
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {loading ? (
                   <div className="text-center text-gray-500">Loading messages...</div>
@@ -281,15 +254,13 @@ const Chat = ({ userId, isAdmin }) => {
                 )}
                 <div ref={messagesEndRef} />
               </div>
-
-              {/* Error Message */}
+ 
               {error && (
                 <div className="px-4 py-2 bg-red-100 text-red-700 border border-red-300 rounded">
                   {error}
                 </div>
               )}
-
-              {/* Input Area */}
+ 
               <div className="p-4 border-t border-gray-200 bg-gray-50">
                 <div className="flex gap-2">
                   <textarea
@@ -318,17 +289,14 @@ const Chat = ({ userId, isAdmin }) => {
       </div>
     );
   }
-
-  // User view - chat with admin
+ 
   return (
-    <div className="flex flex-col h-screen bg-white">
-      {/* Header */}
+    <div className="flex flex-col h-screen bg-white"> 
       <div className="p-4 border-b border-gray-200 bg-gray-50">
         <h2 className="text-lg font-bold">Chat with Admin</h2>
         <p className="text-sm text-gray-500">Get help with your bookings and services</p>
       </div>
-
-      {/* Messages */}
+ 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {loading ? (
           <div className="text-center text-gray-500">Loading messages...</div>
@@ -359,15 +327,13 @@ const Chat = ({ userId, isAdmin }) => {
         )}
         <div ref={messagesEndRef} />
       </div>
-
-      {/* Error Message */}
+ 
       {error && (
         <div className="px-4 py-2 bg-red-100 text-red-700 border border-red-300 rounded">
           {error}
         </div>
       )}
-
-      {/* Input Area */}
+ 
       <div className="p-4 border-t border-gray-200 bg-gray-50">
         <div className="flex gap-2">
           <textarea

@@ -24,10 +24,9 @@ export default function EditServicePage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const [image, setImage] = useState(null); // New image file
-  const [imagePreview, setImagePreview] = useState(""); // Preview URL
-
-  // Fetch service by ID
+  const [image, setImage] = useState(null); 
+  const [imagePreview, setImagePreview] = useState(""); 
+ 
   useEffect(() => {
     const fetchService = async () => {
       try {
@@ -83,8 +82,7 @@ export default function EditServicePage() {
       setImagePreview(URL.createObjectURL(file));
     }
   };
-
-  // Actual update logic
+ 
   const updateService = async () => {
     setSaving(true);
 
@@ -126,8 +124,7 @@ export default function EditServicePage() {
       setSaving(false);
     }
   };
-
-  // Show confirmation before updating
+ 
   const handleSubmit = (e) => {
     e.preventDefault();
     setError("");
@@ -173,8 +170,7 @@ export default function EditServicePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex justify-center items-start p-6 pt-10">
-      {/* Back button */}
+    <div className="min-h-screen bg-gray-50 flex justify-center items-start p-6 pt-10"> 
       <div className="mr-20 flex flex-col justify-start">
         <button
           onClick={() => router.back()}
@@ -182,23 +178,17 @@ export default function EditServicePage() {
         >
           ← Back
         </button>
-      </div>
-
-      {/* Form container */}
+      </div> 
       <div className="bg-white w-full max-w-lg rounded-xl shadow-[0_4px_6px_-1px_rgba(236,72,153,0.4),0_2px_4px_-1px_rgba(236,72,153,0.06)] border p-8">
         <h1 className="text-2xl font-bold text-pink-500 mb-6 text-center">
           <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
     Edit Service
   </span>
-        </h1>
-
-
-        {/* Error / Success messages */}
+        </h1> 
         {error && <div className="bg-red-100 text-red-600 p-3 rounded mb-4 text-sm">{error}</div>}
         {success && <div className="bg-green-100 text-green-600 p-3 rounded mb-4 text-sm">{success}</div>}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Name */}
+        <form onSubmit={handleSubmit} className="space-y-5"> 
           <div>
             <label className="block text-md font-medium text-gray-900 mb-1">Service Name *</label>
             <input
@@ -210,8 +200,7 @@ export default function EditServicePage() {
               
             />
           </div>
-
-          {/* Description */}
+ 
           <div>
             <label className="block text-md font-medium text-gray-900 mb-1">Description</label>
             <textarea
@@ -222,8 +211,7 @@ export default function EditServicePage() {
               className="w-full border-1 border-gray-400 text-gray-900 rounded-lg px-4 py-2   focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
             />
           </div>
-
-          {/* Price */}
+ 
           <div>
             <label className="block text-md font-medium text-gray-900 mb-1">Price (Rs.) *</label>
             <input
@@ -234,8 +222,7 @@ export default function EditServicePage() {
               className="w-full border-1 border-gray-400 text-gray-900 rounded-lg px-4 py-2   focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
             />
           </div>
-
-          {/* Duration */}
+ 
           <div>
             <label className="block text-md font-medium text-gray-900 mb-1">Duration *</label>
             <input
@@ -243,33 +230,31 @@ export default function EditServicePage() {
               name="duration"
               value={form.duration}
               onChange={handleChange}
-              className="w-full border-1 border-gray-400 text-gray-900 rounded-lg px-4 py-2   focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
+              className="w-full border-1 border-gray-400 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
             />
           </div>
-
-          {/* Gender */}
+ 
           <div>
             <label className="block text-md font-medium text-gray-900 mb-1">Gender *</label>
             <select
               name="gender"
               value={form.gender}
               onChange={handleChange}
-              className="w-full border-1 border-gray-400 text-gray-900 rounded-lg px-4 py-2   focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
+              className="w-full border-1 border-gray-400 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
             >
               <option value="">Select Gender</option>
               <option value="male">Male</option>
               <option value="female">Female</option>
             </select>
           </div>
-
-          {/* Category */}
+ 
           <div>
             <label className="block text-md font-medium text-gray-900 mb-1">Category *</label>
             <select
               name="category"
               value={form.category}
               onChange={handleChange}
-              className="w-full border-1 border-gray-400 text-gray-900 rounded-lg px-4 py-2   focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
+              className="w-full border-1 border-gray-400 text-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500"
             >
               <option value="">Select Category</option>
               <option value="hair">Hair</option>
@@ -281,8 +266,7 @@ export default function EditServicePage() {
               <option value="spa">Spa</option>
             </select>
           </div>
-
-          {/* Image Upload */}
+ 
           <div>
             <label className="block text-md font-medium text-gray-900 mb-1">Service Image</label>
 
@@ -311,8 +295,7 @@ export default function EditServicePage() {
               />
             )}
           </div>
-
-          {/* Buttons */}
+ 
           <div className="flex justify-between pt-4">
             <button
               type="button"

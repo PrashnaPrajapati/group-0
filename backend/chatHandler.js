@@ -3,21 +3,15 @@ const jwt = require("jsonwebtoken");
 
 let onlineUsers = new Map(); 
 let onlineAdmins = new Map(); 
-
-/**
- * Initialize Socket.io handlers for chat
- * @param {Object} io - Socket.io server instance
- */
+ 
 const initializeChat = (io) => {
   io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
-
-    // Register user/admin with JWT verification
+ 
     socket.on("register_user", (data) => {
       try {
         const { userId, token } = data;
-        
-        // Verify JWT token for security
+         
         try {
           const decoded = jwt.verify(token, process.env.SECRET_KEY);
           if (decoded.id !== userId || decoded.role !== "users") {
@@ -26,18 +20,15 @@ const initializeChat = (io) => {
         } catch (err) {
           return socket.emit("error", { message: "Unauthorized" });
         }
-
-        // Store user connection
+ 
         onlineUsers.set(userId, socket.id);
         socket.userId = userId;
         socket.userRole = "users";
         
         console.log(`User ${userId} registered with socket ${socket.id}`);
-        
-        // Notify admins that a user is online
+         
         io.emit("user_online", { userId, isOnline: true });
-
-        // Send currently online admin list to this user
+ 
         socket.emit("admin_list", { adminIds: Array.from(onlineAdmins.keys()) });
       } catch (error) {
         console.error("Error registering user:", error);
@@ -48,8 +39,7 @@ const initializeChat = (io) => {
     socket.on("register_admin", (data) => {
       try {
         const { adminId, token } = data;
-        
-        // Verify JWT token for security
+    
         try {
           const decoded = jwt.verify(token, process.env.SECRET_KEY);
           if (decoded.id !== adminId || decoded.role !== "admin") {
@@ -58,8 +48,7 @@ const initializeChat = (io) => {
         } catch (err) {
           return socket.emit("error", { message: "Unauthorized" });
         }
-
-        // Store admin connection
+ 
         onlineAdmins.set(adminId, socket.id);
         socket.userId = adminId;
         socket.userRole = "admin";
@@ -70,8 +59,7 @@ const initializeChat = (io) => {
         socket.emit("error", { message: "Registration failed" });
       }
     });
-
-    // Request message history
+ 
     socket.on("request_history", (data) => {
       try {
         const { conversationUserId } = data;
@@ -80,8 +68,7 @@ const initializeChat = (io) => {
         if (!currentUserId) {
           return socket.emit("error", { message: "Not registered" });
         }
-
-        // Fetch messages from database
+ 
         const query = `
           SELECT id, senderId, receiverId, message, isRead, timestamp
           FROM messages
@@ -113,8 +100,7 @@ const initializeChat = (io) => {
               messages: normalized,
               conversationUserId,
             });
-
-            // Mark messages as read
+ 
             markMessagesAsRead(currentUserId, conversationUserId);
           }
         );
@@ -123,8 +109,7 @@ const initializeChat = (io) => {
         socket.emit("error", { message: "Error loading history" });
       }
     });
-
-    // Handle incoming messages
+ 
     socket.on("send_message", (data) => {
       try {
         const { receiverId, message } = data;
@@ -138,8 +123,7 @@ const initializeChat = (io) => {
         if (!message || !message.trim()) {
           return socket.emit("error", { message: "Empty message" });
         }
-
-        // Save message to database
+ 
         const query = `
           INSERT INTO messages (senderId, receiverId, message, timestamp, isRead)
           VALUES (?, ?, ?, CURRENT_TIMESTAMP, 0)
@@ -163,8 +147,7 @@ const initializeChat = (io) => {
               is_read: false,
               created_at: new Date().toISOString(),
             };
-
-            // Send to receiver based on role
+ 
             const receiverSocketId =
               senderRole === "users"
                 ? onlineAdmins.get(receiverId)
@@ -173,8 +156,7 @@ const initializeChat = (io) => {
             if (receiverSocketId) {
               io.to(receiverSocketId).emit("receive_message", messageData);
             }
-
-            // Confirm message was sent
+ 
             socket.emit("message_sent", messageData);
           }
         );
@@ -183,8 +165,7 @@ const initializeChat = (io) => {
         socket.emit("error", { message: "Error sending message" });
       }
     });
-
-    // Mark messages as read
+ 
     socket.on("mark_as_read", (data) => {
       try {
         const { conversationUserId } = data;
@@ -197,8 +178,7 @@ const initializeChat = (io) => {
         console.error("Error marking as read:", error);
       }
     });
-
-    // Get list of users (for admin to see who they can chat with)
+ 
     socket.on("get_users", () => {
       try {
         if (socket.userRole !== "admin") {
@@ -224,8 +204,7 @@ const initializeChat = (io) => {
         socket.emit("error", { message: "Error loading users" });
       }
     });
-
-    // Disconnect handler
+ 
     socket.on("disconnect", () => {
       console.log("User disconnected:", socket.id);
 
@@ -240,10 +219,7 @@ const initializeChat = (io) => {
     });
   });
 };
-
-/**
- * Mark messages as read in database
- */
+ 
 function markMessagesAsRead(currentUserId, senderUserId) {
   const query = `
     UPDATE messages
@@ -255,10 +231,7 @@ function markMessagesAsRead(currentUserId, senderUserId) {
     if (err) console.error("Error marking as read:", err);
   });
 }
-
-/**
- * Get user info by ID
- */
+ 
 const getUserInfo = (userId) => {
   return new Promise((resolve, reject) => {
     db.query(

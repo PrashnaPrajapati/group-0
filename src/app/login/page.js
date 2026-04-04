@@ -144,18 +144,14 @@ const regex = new RegExp(
 
   return (
     <div className="min-h-screen flex bg-white">
-      <ToastContainer />
-
-      {/* LEFT IMAGE */}
+      <ToastContainer /> 
       <div className="hidden md:block w-1/2">
         <img
           src="/login.png"
           alt="side"
           className="w-full h-full object-cover brightness-90"
         />
-      </div>
-
-      {/* RIGHT FORM */}
+      </div> 
       <div className="w-full md:w-1/2 flex items-center justify-center bg-pink-50 px-8 py-12">
         <div className="w-full max-w-md">
           <Logo />
@@ -167,8 +163,7 @@ const regex = new RegExp(
             Login to continue your beauty journey
           </p>
 
-          <form className="space-y-6" onSubmit={handleLogin}>
-            {/* Email */}
+          <form className="space-y-6" onSubmit={handleLogin}> 
             <TextInput
               ref={emailRef}
               label="Email Address"
@@ -186,8 +181,7 @@ const regex = new RegExp(
               error={errors.email}
               disabled={loading}
             />
-
-            {/* Password */}
+ 
             <PasswordInput
               ref={passwordRef}
               label="Password"
@@ -211,8 +205,7 @@ const regex = new RegExp(
               {loading ? "Logging in..." : "Login"}
             </Button>
           </form>
-
-          {/* Divider */}
+ 
           <div className="flex items-center my-6">
             <hr className="flex-grow border-gray-300" />
             <span className="mx-3 text-gray-500 text-sm">

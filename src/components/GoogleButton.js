@@ -3,15 +3,12 @@ import { signIn, getSession } from "next-auth/react";
 
 export default function GoogleButton() {
 
-  const handleGoogleLogin = async () => {
-    // 🔥 Prevent auto redirect
+  const handleGoogleLogin = async () => { 
     await signIn("google", { redirect: false });
-
-    // Get session from NextAuth
+ 
     const session = await getSession();
     if (!session) return;
-
-    // Call your backend
+ 
     const res = await fetch("http://localhost:5001/google-login", {
       method: "POST",
       headers: {
@@ -24,12 +21,10 @@ export default function GoogleButton() {
 
     const data = await res.json();
 
-    if (res.ok) {
-      // ✅ Store token like normal login
+    if (res.ok) { 
       localStorage.setItem("token", data.token);
       localStorage.setItem("role", data.user.role);
-
-      // Redirect manually
+ 
       window.location.href = "/dashboard";
     } else {
       alert("Google login failed");
