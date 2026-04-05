@@ -129,7 +129,7 @@ const regex = new RegExp(
     } else {
       router.replace("/services");
     }
-  },1000);
+  },);
 }
 
   } catch (err) {

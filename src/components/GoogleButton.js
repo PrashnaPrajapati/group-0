@@ -25,7 +25,7 @@ export default function GoogleButton() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("role", data.user.role);
  
-      window.location.href = "/dashboard";
+      window.location.href = "/services";
     } else {
       alert("Google login failed");
     }

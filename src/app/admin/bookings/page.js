@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import AdminSidebar from "../../../components/AdminSidebar";
@@ -74,7 +74,6 @@ const handlePrevPage = () => {
   };
  
   const handleStatusChange = (id, newStatus) => {
-    // Optimistically update the local state
     const updatedBookings = bookings.map((b) =>
       b.id === id ? { ...b, status: newStatus } : b
     );

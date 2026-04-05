@@ -211,8 +211,14 @@ export default function UserDashboard() {
 
   const handleSubmitFeedback = async () => {
     if (!currentBooking) return;
-    if (!userId) return alert("User not logged in");
-    if (rating === 0 || feedbackText.trim() === "") return alert("Please provide a rating and feedback.");
+    if (!userId) {
+      toast.error("User not logged in");
+      return;
+    }
+    if (rating === 0 || feedbackText.trim() === "") {
+      toast.error("Please provide a rating and feedback.");
+      return;
+    }
 
     try {
       const res = await fetch(`http://localhost:5001/bookings/${currentBooking.id}/feedback`, {
@@ -225,10 +231,12 @@ export default function UserDashboard() {
       });
 
       const data = await res.json().catch(() => null);
-      if (!res.ok) return alert(data?.message || "Feedback submission failed");
+      if (!res.ok) {
+        toast.error(data?.message || "Feedback submission failed");
+        return;
+      }
 
-      setBookings(prev => ({ 
-        
+      setBookings(prev => ({
         ...prev,
         completed: prev.completed.map(b =>
           b.id === currentBooking.id
@@ -240,10 +248,10 @@ export default function UserDashboard() {
       setShowFeedbackModal(false);
       setRating(0);
       setFeedbackText("");
-      alert("Thank you for your feedback!");
+      toast.success("Thank you for your feedback!");
     } catch (err) {
       console.error(err);
-      alert("Something went wrong. Please try again.");
+      toast.error("Something went wrong. Please try again.");
     }
   };
  

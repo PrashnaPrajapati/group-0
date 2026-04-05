@@ -38,8 +38,7 @@ export default function BookingsPage() {
     typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   const timeSlots = ["09:00","10:00","11:00","12:00","14:00","15:00","16:00","17:00","18:00"];
-
-  // Fetch services and packages
+ 
   useEffect(() => {
     fetch("http://localhost:5001/services")
       .then((res) => res.json())
@@ -117,8 +116,8 @@ export default function BookingsPage() {
     if (!res.ok) return setErrorMessage(data.message || "Booking failed");
 
     
-   const bookingIdsParam = data.bookingIds ? data.bookingIds.join(",") : data.bookingId;
-    router.push(`/payments?bookingIds=${bookingIdsParam}&totalPrice=${totalPrice}`);
+  router.push("/dashboard")
+ 
  
     setSelectedServices(serviceIdFromQuery ? [serviceIdFromQuery] : []);
     setSelectedPackage(null);
@@ -462,7 +461,7 @@ export default function BookingsPage() {
                 }
                 className="w-full py-2 text-white rounded-full bg-gradient-to-r from-pink-500 to-purple-500 hover:scale-105 transition"
               >
-                {loading ? "Booking..." : "Proceed to Payment"}
+                {loading ? "Booking..." : "Confirm Booking"}
               </button>
             </form>
           </div>
