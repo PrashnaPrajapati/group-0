@@ -4,6 +4,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
+import Navbar from "@/components/Navbar";
  
 export default function BookingsPage() {
   const searchParams = useSearchParams();
@@ -11,6 +12,7 @@ export default function BookingsPage() {
   const serviceIdFromQuery = Number(searchParams.get("serviceId") || 0);
   const packageIdFromQuery = Number(searchParams.get("packageId") || 0);
 
+  const [isOpen, setIsOpen] = useState(false);
   const [services, setServices] = useState([]);
   const [packages, setPackages] = useState([]);
 
@@ -167,9 +169,11 @@ export default function BookingsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#fff7fa]">
-      <Sidebar />
-      <div className="flex flex-col min-h-screen md:ml-64">
+    <div className="min-h-screen bg-gray-50">
+      <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
+      <div className="flex flex-col min-h-screen md:ml-70">
+      <Navbar />
+      <div className="flex flex-col min-h-screen pt-20">
         <main className="flex-1 p-8">
           <h1 className="text-3xl font-bold text-center mb-10 bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-purple-500">
             Book Your Appointment
@@ -243,6 +247,16 @@ export default function BookingsPage() {
                         : "bg-white border-gray-200 hover:shadow-md hover:scale-[1.01]"
                     }`}
                   >
+                    <img
+                          src={
+                            p.image && p.image.startsWith("/")
+                              ? `http://localhost:5001${p.image}`
+                              : `http://localhost:5001/uploads/packages/${p.image}`
+                          }
+                          alt={p.name}
+                          className="w-full h-36 object-cover rounded mb-3"
+                        />
+
                     <h3 className="text-lg font-semibold text-gray-800 mb-1">{p.name}</h3>
                     <p className="text-sm text-gray-600 mb-3">{p.description}</p>
                     <div className="flex justify-between text-sm font-semibold text-pink-500">
@@ -468,6 +482,7 @@ export default function BookingsPage() {
         </main> 
         <Footer />
       </div>
+    </div>
     </div>
   );
 } 

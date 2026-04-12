@@ -152,16 +152,10 @@ export default function AdminDashboard() {
     <AdminSidebar>
       <ToastContainer position="top-center" />
       <div className="space-y-8">
-  <h1 className="text-4xl font-bold flex items-center gap-3">
-  <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
-    Admin Dashboard
-  </span>
-</h1>
- 
-  <div className="flex flex-col gap-1 text-gray-600">
-    <p className="text-2xl font-medium">Welcome back, Admin!</p>
-    <p className="text-md">Manage your services, bookings, and analytics</p>
-  </div>
+        <div className="flex flex-col gap-1 text-gray-600">
+          <p className="text-2xl font-medium">Welcome back, Admin!</p>
+          <p className="text-md">Manage your services, bookings, and analytics</p>
+        </div>
  
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card title="Total Services" value={stats?.totalServices} />

@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { jwtDecode } from "jwt-decode";
+import NotificationSystem from "./NotificationSystem";
 
 const menu = [
   { name: "Dashboard", href: "/admin/dashboard" },
@@ -14,11 +17,25 @@ const menu = [
 
 export default function AdminSidebar({ children }) {
   const pathname = usePathname();
+  const [userId, setUserId] = useState(null);
+  const [userRole, setUserRole] = useState(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        setUserId(decoded.id);
+        setUserRole(decoded.role);
+      } catch (error) {
+        console.error("Error decoding token:", error);
+      }
+    }
+  }, []);
 
   return (
-    <div className="flex min-h-screen bg-gray-50"> 
-      <aside className="w-64 bg-white shadow-lg flex flex-col p-6">
-
+    <div className="flex min-h-screen bg-gray-50">
+      <aside className="w-64 bg-white shadow-lg flex flex-col p-6"> 
         <div className="mb-10 text-center">
           <h2 className="text-2xl font-bold text-pink-500">
             Admin Panel
@@ -51,11 +68,27 @@ export default function AdminSidebar({ children }) {
         <div className="mt-auto text-center text-gray-400 text-sm">
           &copy; 2026 Singar Glow Admin
         </div>
-      </aside> 
-      <main className="flex-1 p-8">
-        {children}
-      </main>
+      </aside>
 
+      <div className="flex-1 flex flex-col">
+        {/* Admin Header with Notifications */}
+        <header className="bg-white shadow-sm border-b px-6 py-4 flex justify-between items-center">
+          <div>
+            <h1 className="text-xl font-semibold text-gray-800">Admin Dashboard</h1>
+          </div>
+          <div className="flex items-center gap-4">
+            <NotificationSystem userId={userId} userRole={userRole} />
+            <div className="text-sm text-gray-600">
+              Welcome, Admin
+            </div>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <main className="flex-1 p-8">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

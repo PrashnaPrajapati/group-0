@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
+import Navbar from "@/components/Navbar";
 
 export default function BookPackagePage() {
   const router = useRouter();
@@ -12,6 +13,9 @@ export default function BookPackagePage() {
   const [packages, setPackages] = useState([]);
   const [filteredPackages, setFilteredPackages] = useState([]);
   const [search, setSearch] = useState("");
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 9;
  
   useEffect(() => {
     if (tab === "packages") {
@@ -40,12 +44,33 @@ export default function BookPackagePage() {
       );
       setFilteredPackages(filtered);
     }
+    setCurrentPage(1);
   }, [search, packages]);
+
+  const totalPages = Math.max(
+  1,
+  Math.ceil(filteredPackages.length / itemsPerPage)
+);
+
+const startIndex = (currentPage - 1) * itemsPerPage;
+
+const currentPackages = filteredPackages.slice(
+  startIndex,
+  startIndex + itemsPerPage
+);
+
+useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Sidebar />
-      <div className="flex flex-col min-h-screen md:ml-64">
+      <div className="flex flex-col min-h-screen md:ml-70">
+      <Navbar />
+      <div className="flex flex-col min-h-screen pt-20">
         <main className="flex-1 p-8">
 
           <div className="text-center mb-6">
@@ -106,13 +131,14 @@ export default function BookPackagePage() {
         </div>
  
           {tab === "packages" && (
+            <>
             <div className="max-w-8xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredPackages.length === 0 ? (
+              {currentPackages.length === 0 ? (
                 <p className="text-center text-gray-500 col-span-full">
                   No packages match your search
                 </p>
               ) : (
-                filteredPackages.map((pkg) => (
+                currentPackages.map((pkg) => (
                   <div
                       key={pkg.id}
                       className="p-5 rounded-xl border bg-white shadow-[0_4px_6px_-1px_rgba(236,72,153,0.4),0_2px_4px_-1px_rgba(236,72,153,0.06)] hover:shadow-lg transition-all duration-300 flex flex-col"
@@ -142,10 +168,38 @@ export default function BookPackagePage() {
                 ))
               )}
             </div>
+            <div className="flex justify-center items-center gap-3 mt-10">
+                <button
+                  onClick={() =>
+                    setCurrentPage((p) => Math.max(p - 1, 1))
+                  }
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 bg-gray-400 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Prev
+                </button>
+
+                <span className="font-medium text-gray-700">
+                  Page {currentPage} of {totalPages}
+                </span>
+
+                <button
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(p + 1, totalPages))
+                  }
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 bg-gray-400 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </>
           )}
         </main>
         <Footer />
+        
       </div>
+    </div>
     </div>
   );
 }

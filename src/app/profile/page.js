@@ -8,6 +8,7 @@ import PasswordInput from "@/components/PasswordInput";
 import Button from "@/components/Button";
 import {User, Mail, Phone, MapPin, Lock} from "lucide-react";
 import Sidebar from "@/components/Sidebar";
+import Navbar from "@/components/Navbar";
  
 export default function ProfilePage() {
   const [profile, setProfile] = useState({
@@ -22,6 +23,7 @@ export default function ProfilePage() {
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [loadingPassword, setLoadingPassword] = useState(false);
   const [token, setToken] = useState(null);
+  const [isOpen, setIsOpen] = useState(false);
  
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
@@ -84,10 +86,15 @@ export default function ProfilePage() {
   };
 
   const changePassword = async () => {
-    if (!passwords.currentPassword || !passwords.newPassword) {
-      toast.error("Both passwords are required");
+    if (!passwords.currentPassword || !passwords.newPassword || !passwords.confirmNewPassword) {
+      toast.error("All password fields are required");
       return;
     }
+    if (passwords.newPassword !== passwords.confirmNewPassword) {
+      toast.error("New password and confirm password do not match");
+      return;
+    }
+
     try {
       setLoadingPassword(true);
       const toastId = toast.info("Changing password...", { autoClose: false });
@@ -135,9 +142,11 @@ export default function ProfilePage() {
 
 return (
   <div className="flex">
-      <Sidebar />
-      <div className="flex-1 ml-64 p-8 bg-pink-50 min-h-screen">
-  <div className="min-h-screen bg-pink-50 p-8 flex flex-col items-center space-y-8">
+      <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
+      <div className="flex-1 bg-gray-50 min-h-screen md:ml-70">
+      <Navbar onMenuClick={() => setIsOpen(true)} />
+      <div className="flex flex-col min-h-screen pt-20">
+  <div className="min-h-screen bg-gray-50 p-8 flex flex-col items-center space-y-6">
     <ToastContainer position="top-center" />
  
     <div className="text-center space-y-2">
@@ -226,7 +235,17 @@ return (
           disabled={loadingPassword}
           icon={Lock}
         />
-        
+
+        <PasswordInput
+          label="Confirm New Password"
+          name="confirmNewPassword"
+          placeholder="Confirm new password"
+          value={passwords.confirmNewPassword || ""}
+          onChange={(e) => setPasswords({ ...passwords, confirmNewPassword: e.target.value })}
+          disabled={loadingPassword}
+          icon={Lock}
+        />
+
         <Button onClick={changePassword} fullWidth disabled={loadingPassword}>
           {loadingPassword ? "Changing..." : "Change Password"}
         </Button>
@@ -234,6 +253,7 @@ return (
     </div>
     </div>
     </div>
+  </div>
   </div>
 );
 }

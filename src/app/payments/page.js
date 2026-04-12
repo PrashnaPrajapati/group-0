@@ -4,6 +4,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
+import Navbar from "@/components/Navbar";
 
 export default function PaymentsPage() {
   const searchParams = useSearchParams();
@@ -20,6 +21,7 @@ export default function PaymentsPage() {
   const [loading, setLoading] = useState(false);
  
   const [userEmail, setUserEmail] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
 
   const handleEsewaPayment = async () => {
     if (!userEmail) {
@@ -108,9 +110,11 @@ export default function PaymentsPage() {
   }, [bookingIds, totalPrice]);
 
   return (
-    <div className="min-h-screen bg-[#fff7fa]">
-      <Sidebar />
-      <div className="flex flex-col min-h-screen md:ml-64">
+    <div className="min-h-screen bg-gray-50">
+      <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
+      <div className="flex flex-col min-h-screen md:ml-70">
+      <Navbar onMenuClick={() => setIsOpen(true)} />
+      <div className="flex flex-col min-h-screen pt-20">
         <main className="flex-1 p-8">
           <h1 className="text-3xl font-bold text-center mb-10 bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-purple-500">
             Payment with eSewa
@@ -153,6 +157,7 @@ export default function PaymentsPage() {
         </main>
         <Footer />
       </div>
+    </div>
     </div>
   );
 }

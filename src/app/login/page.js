@@ -218,7 +218,7 @@ const regex = new RegExp(
 
           <p className="text-center text-sm mt-6 text-gray-500">
             Don’t have an account?
-            <a href="/signup" className="text-pink-600 font-semibold ml-1">
+            <a href="/signup" className="text-pink-500 font-semibold ml-1">
               Sign Up
             </a>
           </p>

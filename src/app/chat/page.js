@@ -4,8 +4,10 @@ import { useState, useEffect } from "react";
 import { jwtDecode } from "jwt-decode"; 
 import Chat from "@/components/Chat";
 import Sidebar from "@/components/Sidebar";
+import Navbar from "@/components/Navbar";
 
 export default function UserChatPage() {
+  const [isOpen, setIsOpen] = useState(false);
   const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -55,11 +57,15 @@ export default function UserChatPage() {
 
   return (
     <div className="flex">
-      <Sidebar />
+      <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
+      <div className="flex-1 md:ml-70 flex flex-col min-h-screen">
+      <Navbar onMenuClick={() => setIsOpen(true)} />
 
-    <div className="flex-1 ml-64">
+    <div className="flex-1 flex flex-col min-h-screen pt-20">
       <Chat userId={userId} isAdmin={false} />
     </div>
     </div>
+    </div>
+  
   );
 }

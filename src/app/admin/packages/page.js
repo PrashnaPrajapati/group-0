@@ -112,12 +112,10 @@ export default function AdminPackagesPage() {
     return <div className="p-10 text-center text-gray-500">Loading packages...</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <AdminSidebar />
-
-      <main className="flex-1 p-8">
+    <AdminSidebar>
+      <div>
         <ToastContainer position="top-center" />
- 
+
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={() => router.back()}
@@ -126,21 +124,20 @@ export default function AdminPackagesPage() {
             ← Back
           </button>
 
-            <div className="text-center mb-6">
-              <h1 className="text-3xl font-bold">
-                <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
-                  Package Management
-                </span>
-              </h1>
+          <div className="text-center mb-6">
+            <h1 className="text-3xl font-bold">
+              <span className="bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
+                Package Management
+              </span>
+            </h1>
 
-              <p className="text-gray-500 mt-2">
-                Manage all available packages in one place
-              </p>
-              <p className="text-gray-500 text-md mt-1">
-                Add new packages, update details, control pricing, duration, and linked services efficiently
-              </p>
-              
-            </div>
+            <p className="text-gray-500 mt-2">
+              Manage all available packages in one place
+            </p>
+            <p className="text-gray-500 text-md mt-1">
+              Add new packages, update details, control pricing, duration, and linked services efficiently
+            </p>
+          </div>
 
           <button
             onClick={() => router.push("/admin/packages/add")}
@@ -148,6 +145,7 @@ export default function AdminPackagesPage() {
           >
             + Add Package
           </button>
+        </div>
         </div>
  
         <div className="bg-white shadow-[0_4px_6px_-1px_rgba(236,72,153,0.4),0_2px_4px_-1px_rgba(236,72,153,0.06)] rounded-xl overflow-x-auto border">
@@ -234,7 +232,7 @@ export default function AdminPackagesPage() {
             Next
           </button>
         </div>
-      </main>
-    </div>
+    
+    </AdminSidebar>
   );
 }

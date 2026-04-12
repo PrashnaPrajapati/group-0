@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import Sidebar from "@/components/Sidebar";
+import { useRouter } from "next/navigation"; 
 import Footer from "@/components/Footer";
+import Sidebar from "@/components/Sidebar";
+import Navbar from "@/components/Navbar";
+
 
 export default function UserServicesPage() {
   const [services, setServices] = useState([]);
@@ -13,6 +15,11 @@ export default function UserServicesPage() {
   const [search, setSearch] = useState("");
   const [genderFilter, setGenderFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+
+  const [isOpen, setIsOpen] = useState(false);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 9;
 
   const router = useRouter();
 
@@ -43,15 +50,37 @@ export default function UserServicesPage() {
     if (categoryFilter !== "all") {
       temp = temp.filter((s) => s.category === categoryFilter);
     }
-
-    setFilteredServices(temp);
+    setFilteredServices(temp); 
+    setCurrentPage(1);
   }, [search, genderFilter, categoryFilter, services]);
 
+const totalPages = Math.max(
+  1,
+  Math.ceil(filteredServices.length / itemsPerPage)
+);
+
+useEffect(() => {
+  if (currentPage > totalPages) {
+    setCurrentPage(totalPages);
+  }
+}, [totalPages, currentPage]);
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+
+  const currentServices = filteredServices.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  );
+
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Sidebar />
+    <div className="min-h-screen bg-gray-50 flex">
+      <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
+      <div className="flex-col pl-70">
+      <Navbar onMenuClick={() => setIsOpen(true)} />
+      
  
-      <div className="flex flex-col min-h-screen md:ml-64">
+      <div className="flex flex-col min-h-screen pt-20">
         <main className="flex-1 p-8">
 
           {/* Header */}
@@ -101,7 +130,7 @@ export default function UserServicesPage() {
             <select
               value={genderFilter}
               onChange={(e) => setGenderFilter(e.target.value)}
-              className="pp-3 text-gray-700 border-2 border-pink-200 rounded focus:outline-none focus:ring-pink-200 focus:border-pink-500"
+              className="p-3 text-gray-700 border-2 border-pink-200 rounded focus:outline-none focus:ring-pink-200 focus:border-pink-500"
             >
               <option value="all">All Genders</option>
               <option value="male">Male</option>
@@ -136,8 +165,9 @@ export default function UserServicesPage() {
               No services match your criteria
             </p>
           ) : (
+            <>
             <div className="grid md:grid-cols-3 gap-8 max-w-7xl mx-auto">
-              {filteredServices.map((service) => (
+              {currentServices.map((service) => (
                 <div
                   key={service.id}
                   className="bg-white rounded-xl shadow-[0_4px_6px_-1px_rgba(236,72,153,0.4),0_2px_4px_-1px_rgba(236,72,153,0.06)] border overflow-hidden"
@@ -195,10 +225,38 @@ export default function UserServicesPage() {
                 </div>
               ))}
             </div>
+            <div className="flex justify-center items-center gap-3 mt-10">
+
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 bg-gray-400 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Prev
+                </button>
+
+                <span className="text-gray-700 font-medium">
+                  Page {currentPage} of {totalPages}
+                </span>
+
+                <button
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(p + 1, totalPages))
+                  }
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 bg-gray-400 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+
+              </div>
+            </>
+            
           )}
         </main>
 
         <Footer />
+      </div>
       </div>
     </div>
   );

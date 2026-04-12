@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
+import Navbar from "@/components/Navbar";
 
 export default function PackageDetailsPage() {
   const params = useParams();
@@ -44,19 +45,24 @@ export default function PackageDetailsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Sidebar />
-      <div className="flex flex-col min-h-screen md:ml-64">
+      <div className="flex flex-col min-h-screen md:ml-70">
+      <Navbar />
+      <div className="flex flex-col min-h-screen pt-20">
+        
+      <div className="flex flex-col min-h-screen">
         <main className="flex-1 p-8 max-w-5xl mx-auto">
 
           <button
             onClick={() => router.back()}
-            className="mt-6 px-4 py-2 bg-gray-400 rounded hover:bg-gray-300 transition"
+            className="mt-6 px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-400 transition"
           >
-            Back to Packages
+            ← Back to Packages
           </button>
 
           <h1 className="text-3xl font-bold text-center mb-10 bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-purple-500">
             {pkg.name} - Details
           </h1>
+          <div className="bg-white rounded-3xl p-6 md:p-8 shadow-[0_4px_6px_-1px_rgba(236,72,153,0.4),0_2px_4px_-1px_rgba(236,72,153,0.06)] mb-10">
  
           {pkg.image && (
             <img
@@ -66,9 +72,11 @@ export default function PackageDetailsPage() {
             />
           )}
 
-          <p className="text-gray-700 text-lg font-medium mb-6">{pkg.description}</p>
+          <p className="text-gray-900 text-lg font-medium mb-6">{pkg.description}</p>
+          </div>
+          <div className="bg-white rounded-3xl p-6 md:p-8 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-1px_rgba(0,0,0,0.06)] mb-10">
 
-          <p className="text-pink-500 text-2xl font-bold mb-6">Included Services in this package </p>
+          <p className="text-pink-700 text-2xl font-bold mb-6">Included Services in this package </p>
  
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {pkg.services?.map((s) => (
@@ -96,9 +104,11 @@ export default function PackageDetailsPage() {
               </div>
             ))}
           </div>
+          
  
           <div className="mt-6 text-right font-semibold text-pink-500 text-lg">
             Total: Rs. {pkg.price}
+          </div>
           </div>
 
           <div className="flex justify-center mt-4">
@@ -113,6 +123,8 @@ export default function PackageDetailsPage() {
         </main>
         <Footer />
       </div>
+    </div>
+    </div>
     </div>
   );
 }

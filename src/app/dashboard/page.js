@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Sidebar from "@/components/Sidebar";
-import Footer from "@/components/Footer";
+import Footer from "@/components/Footer"; 
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import Sidebar from "@/components/Sidebar";
+import Navbar from "@/components/Navbar";
  
 function parseJwt(token) {
   try {
@@ -16,6 +17,7 @@ function parseJwt(token) {
 }
 
 export default function UserDashboard() {
+  const [isOpen, setIsOpen] = useState(false);
   const [bookings, setBookings] = useState({ upcoming: [], completed: [], cancelled: [] });
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(null);
@@ -23,6 +25,8 @@ export default function UserDashboard() {
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState("upcoming");
  
+  const [user, setUser] = useState(null);
+
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -41,6 +45,19 @@ export default function UserDashboard() {
   const [feedbackText, setFeedbackText] = useState("");
 
   const timeSlots = ["09:00","10:00","11:00","12:00","14:00","15:00","16:00","17:00","18:00"];
+
+  useEffect(() => {
+  if (!token) return;
+
+  fetch("http://localhost:5001/profile", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+    .then((res) => res.json())
+    .then((data) => setUser(data))
+    .catch(() => setUser(null));
+}, [token]);
  
   useEffect(() => {
     setMounted(true);
@@ -256,15 +273,20 @@ export default function UserDashboard() {
   };
  
   return (
-    <div className="min-h-screen bg-[#fff7fa]">
-      <Sidebar />
-      <div className="flex flex-col min-h-screen md:ml-64">
+    <div className="min-h-screen bg-gray-50">
+      <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} className="hidden md:block"/>
+      <div className="flex flex-col min-h-screen md:ml-70">
+      <Navbar onMenuClick={() => setIsOpen(true)} />
+      <div className="flex flex-col min-h-screen md:ml-10 pt-20">
         <main className="flex-1 p-6">
-          <h1 className="text-3xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-purple-500">
-            My Dashboard
+          <h1 className="text-3xl font-bold text-gray-800 mb-4 p-2">
+            Hi, {user?.fullName || "User"} 👋
           </h1>
- 
-          <div className="flex gap-6 mb-6 border-b border-gray-200">
+          <p className="text-gray-600 text-md mb-4 p-2">
+            Welcome to your dashboard! Here you can view and manage your bookings.
+          </p>
+
+          <div className="flex gap-6 mb-6 border-b border-gray-200 pb-4">
             {["upcoming", "completed", "cancelled"].map((tab) => (
               <button
                 key={tab}
@@ -542,5 +564,7 @@ export default function UserDashboard() {
         <ToastContainer position="top-center" />
       </div>
     </div>
+    </div>
+
   );
 }

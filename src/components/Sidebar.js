@@ -2,50 +2,50 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
-
+ 
 const menu = [
   { name: "Dashboard", href: "/dashboard" },
   { name: "Services", href: "/services" },
   { name: "Bookings", href: "/bookings" },
-  { name: "Chat", href: "/chat" }, 
+  { name: "Chat", href: "/chat" },
   { name: "Payments", href: "/payments" },
   { name: "Profile", href: "/profile" },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, setIsOpen }) {
   const pathname = usePathname();
-  const [isOpen, setIsOpen] = useState(false);
-
+ 
   return (
     <>
-      <button
-        className="fixed top-4 left-4 z-50 p-2 bg-pink-500 text-white rounded md:hidden"
-        onClick={() => setIsOpen(true)}
-      >
-        ☰
-      </button>
+      {/* ☰ Button */}
+      
 
+      {/* Sidebar */}
       <aside
         className={`
-          fixed inset-y-0 left-0 z-40 w-64 bg-white rounded-r-xl shadow-lg
-          transform transition-transform duration-300
+          fixed top-0 left-0 z-40 h-full w-72 bg-white shadow-xl
+          transform transition-transform duration-300 ease-in-out
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
-          md:translate-x-0 md:fixed md:flex md:flex-col md:h-screen md:p-6
+          md:translate-x-0
         `}
       >
+        {/* Close button (mobile only) */}
         <button
-          className="self-end mb-4 md:hidden text-gray-500 text-lg"
+          className="md:hidden absolute top-4 right-4 text-gray-500 text-xl"
           onClick={() => setIsOpen(false)}
         >
           ✕
         </button>
 
-        <div className="mb-10 text-center">
-          <h2 className="text-2xl font-bold text-pink-500">Singar Glow</h2>
+        {/* Logo */}
+        <div className="p-6 border-b flex justify-center items-center text-center">
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
+           Quick Access
+          </h2>
         </div>
 
-        <ul className="flex flex-col gap-2">
+        {/* Menu */}
+        <ul className="flex flex-col gap-2 p-4">
           {menu.map((item) => {
             const isActive = pathname === item.href;
 
@@ -53,15 +53,15 @@ export default function Sidebar() {
               <li key={item.name}>
                 <Link
                   href={item.href}
-                  className={`block px-4 py-3 rounded-lg font-medium transition-all
+                  onClick={() => setIsOpen(false)}
+                  className={`block px-4 py-3 rounded-lg font-medium transition
                     ${
                       isActive
-                        ? "bg-pink-50 border-l-4 border-pink-500 text-pink-600 shadow-sm"
+                        ? "bg-pink-50 border-l-4 border-pink-500 text-pink-600"
                         : "text-gray-700 hover:bg-pink-50 hover:text-pink-500"
                     }
                   `}
-                  onClick={() => setIsOpen(false)}
-                >
+                > 
                   {item.name}
                 </Link>
               </li>
@@ -69,17 +69,19 @@ export default function Sidebar() {
           })}
         </ul>
 
-        <div className="mt-auto text-center text-gray-400 text-sm">
+        {/* Footer */}
+        <div className="absolute bottom-4 w-full text-center text-gray-400 text-sm">
           &copy; 2026 Singar Glow
         </div>
       </aside>
 
+      {/* Overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black opacity-25 md:hidden"
+          className="fixed inset-0 bg-black/40 z-30 md:hidden"
           onClick={() => setIsOpen(false)}
         />
       )}
     </>
   );
-}
+} 

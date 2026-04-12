@@ -10,6 +10,9 @@ const socketIo = require('socket.io');
 const vader = require('vader-sentiment');
 const db = require("./db");
 const { initializeChat } = require("./chatHandler");
+const NotificationService = require("./notificationService");
+const NotificationManager = require("./notificationManager");
+
 
 const app = express();
 const port = 5001;
@@ -207,7 +210,7 @@ app.post("/forgot-password", (req, res) => {
           from: process.env.EMAIL_USER,
           to: email,
           subject: "Password Reset",
-          text: `Click the link to reset your password:\n\n${resetLink}\n\nThis link expires in 15 minutes.`,
+          text: `Hello,\n\nWe received a request to reset your password for your Singar Glow account.\n\nTo reset your password, please click the link below:\n${resetLink}\n\nThis link will expire in 15 minutes. Please make sure to use it before then. If you didn't request a password reset, you can safely ignore this email.\n\nThank you,\nThe Singar Glow Team`,
         });
 
         res.json({ message: "Reset instructions sent" });
@@ -274,7 +277,11 @@ app.get("/", (req, res) => {
   res.send("Chat server is running!");
 });
  
-initializeChat(io); 
+initializeChat(io);
+
+
+// Initialize notification service
+const notificationService = new NotificationService(io); 
  
 const getReceiverByRole = (receiverId, senderRole) => {
   return new Promise((resolve, reject) => {
@@ -357,8 +364,7 @@ app.get("/services", (req, res) => {
         console.error("SERVICES ERROR:", err);
         return res.status(500).json({ message: "Database error" });
       }
-
-      console.log("SERVICES RESULT:", results);
+ 
       res.json(results);
     }
   );
@@ -592,6 +598,7 @@ app.put("/profile/change-password", verifyUser, async (req, res) => {
     db.query("UPDATE users SET password=? WHERE id=?", [hashedPassword, userId], (err) => {
       if (err) return res.status(500).json({ message: "DB error" });
       res.json({ message: "Password changed successfully" });
+
     });
   });
 });
@@ -677,10 +684,32 @@ app.post("/bookings", verifyUser, (req, res) => {
           (err, result) => {
             if (err) return res.status(500).json({ message: "DB error", error: err });
 
-            return res.json({
-              message: "Package booking successful",
-              bookingId: result.insertId,
-            });
+            // Get package details for notification
+            db.query(
+              "SELECT name FROM packages WHERE id = ?",
+              [package_id],
+              async (err, packageResults) => {
+                if (!err && packageResults.length > 0) {
+                  try {
+                    await notificationService.notifyNewBooking({
+                      userId,
+                      bookingId: result.insertId,
+                      serviceName: null,
+                      packageName: packageResults[0].name,
+                      bookingDate,
+                      bookingTime
+                    });
+                  } catch (notificationError) {
+                    console.error("Error sending booking notification:", notificationError);
+                  }
+                }
+
+                return res.json({
+                  message: "Package booking successful",
+                  bookingId: result.insertId,
+                });
+              }
+            );
           }
         );
       }
@@ -708,10 +737,43 @@ app.post("/bookings", verifyUser, (req, res) => {
 
         const insertNext = (index) => {
           if (index >= service_ids.length) {
-            return res.json({
-              message: "Booking successful",
-              bookingIds: insertedBookingIds,
+            // Send notifications for all booked services
+            Promise.all(
+              insertedBookingIds.map(async (bookingId, idx) => {
+                try {
+                  const serviceId = service_ids[idx];
+                  const serviceResult = await new Promise((resolve, reject) => {
+                    db.query("SELECT name FROM services WHERE id = ?", [serviceId], (err, results) => {
+                      if (err) reject(err);
+                      else resolve(results[0]);
+                    });
+                  });
+
+                  await notificationService.notifyNewBooking({
+                    userId,
+                    bookingId,
+                    serviceName: serviceResult.name,
+                    packageName: null,
+                    bookingDate,
+                    bookingTime
+                  });
+                } catch (error) {
+                  console.error("Error sending service booking notification:", error);
+                }
+              })
+            ).then(() => {
+              return res.json({
+                message: "Booking successful",
+                bookingIds: insertedBookingIds,
+              });
+            }).catch((error) => {
+              console.error("Error sending notifications:", error);
+              return res.json({
+                message: "Booking successful",
+                bookingIds: insertedBookingIds,
+              });
             });
+            return;
           }
 
           const service_id = service_ids[index];
@@ -746,7 +808,9 @@ app.get("/bookings/my", verifyUser, (req, res) => {
       b.booking_time,
       b.notes,
       b.status,
-
+      b.feedback_submitted,
+      b.address,
+      b.location_type,
       b.package_id,
 
       s.name AS service_name,
@@ -786,21 +850,54 @@ app.get("/admin/bookings", verifyAdmin, (req, res) => {
      LEFT JOIN services s ON b.service_id = s.id
      LEFT JOIN packages p ON b.package_id = p.id`,
     (err, results) => {
-      if (err) return res.status(500).json({ message: "DB error" });
-
-      console.log("API Bookings Data:", results); 
+      if (err) return res.status(500).json({ message: "DB error" }); 
       res.json(results);
     }
   );
 });
 
 app.put("/bookings/:id/cancel", verifyUser, (req, res) => {
+  const bookingId = req.params.id;
+  const userId = req.user.id;
+
+  // First get booking details for notification
   db.query(
-    "UPDATE bookings SET status='cancelled' WHERE id=? AND user_id=?",
-    [req.params.id, req.user.id],
-    (err) => {
+    `SELECT b.*, s.name AS service_name, p.name AS package_name
+     FROM bookings b
+     LEFT JOIN services s ON b.service_id = s.id
+     LEFT JOIN packages p ON b.package_id = p.id
+     WHERE b.id = ? AND b.user_id = ?`,
+    [bookingId, userId],
+    (err, bookingResults) => {
       if (err) return res.status(500).json({ message: "DB error" });
-      res.json({ message: "Booking cancelled" });
+      if (bookingResults.length === 0) return res.status(404).json({ message: "Booking not found" });
+
+      const booking = bookingResults[0];
+
+      // Update booking status
+      db.query(
+        "UPDATE bookings SET status='cancelled' WHERE id=? AND user_id=?",
+        [bookingId, userId],
+        async (err) => {
+          if (err) return res.status(500).json({ message: "DB error" });
+
+          // Send cancellation notification
+          try {
+            await notificationService.notifyBookingCancellation({
+              userId,
+              bookingId,
+              serviceName: booking.service_name,
+              packageName: booking.package_name,
+              bookingDate: booking.booking_date,
+              bookingTime: booking.booking_time
+            });
+          } catch (notificationError) {
+            console.error("Error sending cancellation notification:", notificationError);
+          }
+
+          res.json({ message: "Booking cancelled" });
+        }
+      );
     }
   );
 });
@@ -1702,6 +1799,59 @@ app.post("/api/sentiment", (req, res) => {
 
   const result = analyzeSentiment(text);  
   res.json(result); 
+});
+
+// Notification endpoints
+app.get("/notifications", verifyUser, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const limit = parseInt(req.query.limit) || 50;
+
+    const notifications = await NotificationManager.getNotifications(userId, limit);
+    res.json(notifications);
+  } catch (error) {
+    console.error("Error fetching notifications:", error);
+    res.status(500).json({ message: "Failed to fetch notifications" });
+  }
+});
+
+app.get("/notifications/unread-count", verifyUser, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const unreadCount = await NotificationManager.getUnreadCount(userId);
+    res.json({ unreadCount });
+  } catch (error) {
+    console.error("Error fetching unread count:", error);
+    res.status(500).json({ message: "Failed to fetch unread count" });
+  }
+});
+
+app.put("/notifications/:id/read", verifyUser, async (req, res) => {
+  try {
+    const notificationId = req.params.id;
+    const userId = req.user.id;
+
+    const success = await NotificationManager.markAsRead(notificationId, userId);
+    if (success) {
+      res.json({ message: "Notification marked as read" });
+    } else {
+      res.status(404).json({ message: "Notification not found" });
+    }
+  } catch (error) {
+    console.error("Error marking notification as read:", error);
+    res.status(500).json({ message: "Failed to mark notification as read" });
+  }
+});
+
+app.put("/notifications/mark-all-read", verifyUser, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const affectedRows = await NotificationManager.markAllAsRead(userId);
+    res.json({ message: `${affectedRows} notifications marked as read` });
+  } catch (error) {
+    console.error("Error marking all notifications as read:", error);
+    res.status(500).json({ message: "Failed to mark notifications as read" });
+  }
 });
 
 server.listen(port, () => {
