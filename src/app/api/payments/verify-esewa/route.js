@@ -6,43 +6,63 @@ export async function POST(request) {
 
     if (!refId || !txnId || !amount) {
       return Response.json(
-        { message: "Missing required parameters" },
+        { message: "Missing required parameters: refId, txnId, amount" },
         { status: 400 }
+      );
+    }
+
+    const merchantCode = process.env.NEXT_PUBLIC_ESEWA_MERCHANT_CODE;
+    const secretKey = process.env.ESEWA_MERCHANT_SECRET;
+    const environment = process.env.NEXT_PUBLIC_ESEWA_ENVIRONMENT;
+
+    if (!merchantCode || !secretKey) {
+      console.error("eSewa environment variables not configured");
+      return Response.json(
+        { message: "Server configuration error" },
+        { status: 500 }
       );
     }
  
     const verifyPaymentData = {
       amt: amount,
-      scd: process.env.NEXT_PUBLIC_ESEWA_MERCHANT_CODE,
+      scd: merchantCode,
       rid: refId,
       pid: txnId,
     };
  
     const queryString = `amt=${verifyPaymentData.amt}&pid=${verifyPaymentData.pid}&rid=${verifyPaymentData.rid}&scd=${verifyPaymentData.scd}`;
  
-    const secretKey = process.env.ESEWA_MERCHANT_SECRET;
     const signature = crypto
       .createHmac("sha256", secretKey)
       .update(queryString)
       .digest("base64");
  
     const esewaVerifyUrl =
-      process.env.NEXT_PUBLIC_ESEWA_ENVIRONMENT === "test"
+      environment === "test"
         ? "https://rc.esewa.com.np/api/epay/transaction/status/"
         : "https://esewa.com.np/api/epay/transaction/status/";
 
-    const verifyResponse = await fetch(esewaVerifyUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: `${queryString}&signature=${encodeURIComponent(signature)}`,
+    const verifyUrlWithParams = `${esewaVerifyUrl}?${queryString}&signature=${encodeURIComponent(signature)}`;
+    let verifyResponse = await fetch(verifyUrlWithParams, {
+      method: "GET",
     });
 
-    const verifyResult = await verifyResponse.text();
-    console.log("eSewa Verification Response:", verifyResult);
+    let verifyResult = await verifyResponse.text();
+    console.log("eSewa Verification Response (GET):", verifyResult);
+
+    if (verifyResponse.status === 405 || verifyResult.toLowerCase().includes("method not allowed")) {
+      verifyResponse = await fetch(esewaVerifyUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: `${queryString}&signature=${encodeURIComponent(signature)}`,
+      });
+      verifyResult = await verifyResponse.text();
+      console.log("eSewa Verification Response (POST fallback):", verifyResult);
+    }
  
-    if (verifyResult.includes("success")) { 
+    if (verifyResult.toLowerCase().includes("success")) { 
       try {
         const saveResponse = await fetch(
           "http://localhost:5001/payments/save-transaction",
@@ -75,7 +95,7 @@ export async function POST(request) {
       );
     } else {
       return Response.json(
-        { message: "eSewa payment verification failed" },
+        { message: "eSewa payment verification failed", detail: verifyResult },
         { status: 400 }
       );
     }

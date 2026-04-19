@@ -105,16 +105,7 @@ export default function Navbar({ onMenuClick }) {
 
       {/* LEFT SIDE */}
       <div className="flex items-center gap-4">
-
-        {/* ☰ button (mobile only) */}
-        <button
-          onClick={onMenuClick}
-          className="text-3xl md:hidden text-gray-700"
-        >
-          ☰
-        </button>
-
-        {/* LOGO */}
+        {/* LOGO */} 
         <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
           ✦ Singar Glow
         </h1>

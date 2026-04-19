@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
  
@@ -13,26 +14,34 @@ const menu = [
 ];
 
 export default function Sidebar({ isOpen, setIsOpen }) {
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const open = typeof isOpen === "boolean" ? isOpen : internalIsOpen;
+  const setOpen = setIsOpen || setInternalIsOpen;
   const pathname = usePathname();
  
   return (
     <>
-      {/* ☰ Button */}
-      
+      {!open && (
+        <button
+          onClick={() => setOpen(true)}
+          className="fixed top-24 left-5 z-60 flex h-12 w-12 items-center justify-center rounded-full bg-pink-500 text-white shadow-lg shadow-pink-500/30"
+          aria-label="Open sidebar"
+        >
+          ☰
+        </button>
+      )}
 
       {/* Sidebar */}
       <aside
         className={`
           fixed top-0 left-0 z-40 h-full w-72 bg-white shadow-xl
           transform transition-transform duration-300 ease-in-out
-          ${isOpen ? "translate-x-0" : "-translate-x-full"}
-          md:translate-x-0
+          ${open ? "translate-x-0" : "-translate-x-full"}
         `}
-      >
-        {/* Close button (mobile only) */}
+      > 
         <button
-          className="md:hidden absolute top-4 right-4 text-gray-500 text-xl"
-          onClick={() => setIsOpen(false)}
+          className="absolute top-4 right-4 text-gray-500 text-xl"
+          onClick={() => setOpen(false)}
         >
           ✕
         </button>
@@ -53,7 +62,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
               <li key={item.name}>
                 <Link
                   href={item.href}
-                  onClick={() => setIsOpen(false)}
+                  onClick={() => setOpen(false)}
                   className={`block px-4 py-3 rounded-lg font-medium transition
                     ${
                       isActive
@@ -76,10 +85,10 @@ export default function Sidebar({ isOpen, setIsOpen }) {
       </aside>
 
       {/* Overlay */}
-      {isOpen && (
+      {open && (
         <div
-          className="fixed inset-0 bg-black/40 z-30 md:hidden"
-          onClick={() => setIsOpen(false)}
+          className="fixed inset-0 bg-black/40 z-30"
+          onClick={() => setOpen(false)}
         />
       )}
     </>

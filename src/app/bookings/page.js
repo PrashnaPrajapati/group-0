@@ -117,8 +117,10 @@ export default function BookingsPage() {
     const data = await res.json();
     if (!res.ok) return setErrorMessage(data.message || "Booking failed");
 
-    
-  router.push("/dashboard")
+    // Redirect to payments with booking IDs and total price
+    const bookingIds = data.bookingIds || [data.bookingId];
+    router.push(`/payments?bookingIds=${bookingIds.join(',')}&totalPrice=${totalPrice}`);
+
  
  
     setSelectedServices(serviceIdFromQuery ? [serviceIdFromQuery] : []);
@@ -171,7 +173,7 @@ export default function BookingsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
-      <div className="flex flex-col min-h-screen md:ml-70">
+      <div className={`flex flex-col min-h-screen ${isOpen ? "md:ml-70" : "pl-16 md:pl-8"}`}>
       <Navbar />
       <div className="flex flex-col min-h-screen pt-20">
         <main className="flex-1 p-8">

@@ -68,7 +68,7 @@ useEffect(() => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Sidebar />
-      <div className="flex flex-col min-h-screen md:ml-70">
+      <div className="flex flex-col min-h-screen">
       <Navbar />
       <div className="flex flex-col min-h-screen pt-20">
         <main className="flex-1 p-8">

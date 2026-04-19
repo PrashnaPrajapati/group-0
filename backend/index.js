@@ -156,6 +156,15 @@ app.post("/login", async (req, res) => {
 
     const user = users[0];
 
+    if (user.blocked) {
+      const reason = user.blockedReason?.trim();
+      return res.status(403).json({
+        message: reason
+          ? `You have been blocked due to ${reason}.`
+          : "You have been blocked. Please contact support.",
+      });
+    }
+
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
       return res.status(401).json({ message: "Incorrect password" });
@@ -318,6 +327,88 @@ app.get("/admin/users", verifyAdmin, (req, res) => {
   db.query("SELECT * FROM users", (err, results) => {
     if (err) return res.status(500).json({ message: "Database error" });
     res.json(results);
+  });
+});
+
+app.put("/admin/users/:id/role", verifyAdmin, (req, res) => {
+  const userId = req.params.id;
+  const { role } = req.body;
+  const allowedRoles = ["admin", "users"];
+
+  if (!allowedRoles.includes(role)) {
+    return res.status(400).json({ message: "Invalid role" });
+  }
+
+  db.query(
+    "UPDATE users SET role = ? WHERE id = ?",
+    [role, userId],
+    (err, result) => {
+      if (err) return res.status(500).json({ message: "Database error" });
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json({ message: "User role updated" });
+    }
+  );
+});
+
+const handleBlockUser = (userId, reason, res) => {
+  if (!reason || !reason.toString().trim()) {
+    return res.status(400).json({ message: "Block reason is required." });
+  }
+
+  db.query(
+    "UPDATE users SET blocked = TRUE, blockedReason = ? WHERE id = ?",
+    [reason.trim(), userId],
+    (err, result) => {
+      if (err) return res.status(500).json({ message: "Database error" });
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json({ message: "User blocked successfully" });
+    }
+  );
+};
+
+const handleUnblockUser = (userId, res) => {
+  db.query(
+    "UPDATE users SET blocked = FALSE, blockedReason = NULL WHERE id = ?",
+    [userId],
+    (err, result) => {
+      if (err) return res.status(500).json({ message: "Database error" });
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json({ message: "User unblocked successfully" });
+    }
+  );
+};
+
+app.put("/admin/users/:id/block", verifyAdmin, (req, res) => {
+  handleBlockUser(req.params.id, req.body.reason, res);
+});
+
+app.post("/admin/users/:id/block", verifyAdmin, (req, res) => {
+  handleBlockUser(req.params.id, req.body.reason, res);
+});
+
+app.put("/admin/users/:id/unblock", verifyAdmin, (req, res) => {
+  handleUnblockUser(req.params.id, res);
+});
+
+app.post("/admin/users/:id/unblock", verifyAdmin, (req, res) => {
+  handleUnblockUser(req.params.id, res);
+});
+
+app.delete("/admin/users/:id", verifyAdmin, (req, res) => {
+  const userId = req.params.id;
+
+  db.query("DELETE FROM users WHERE id = ?", [userId], (err, result) => {
+    if (err) return res.status(500).json({ message: "Database error" });
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json({ message: "User deleted" });
   });
 });
 
@@ -1765,31 +1856,6 @@ app.patch("/bookings/confirm", verifyUser, (req, res) => {
 const paymentsRouter = require("./payments");
 app.use("/payments", paymentsRouter);
 
-app.post("/payments/save-transaction", async (req, res) => {
-  const { refId, txnId, amount, bookingIds, status, paymentMethod } = req.body;
-
-  try {
-    const [exists] = await db.promise().query(
-      "SELECT id FROM payments WHERE transaction_id = ?",
-      [txnId]
-    );
-
-    if (exists.length > 0) {
-      return res.json({ message: "Transaction already saved" });
-    }
-
-    await db.promise().query(
-      "INSERT INTO payments (reference_id, transaction_id, amount, status, payment_method, created_at) VALUES (?, ?, ?, ?, ?, NOW())",
-      [refId, txnId, amount, status, paymentMethod]
-    );
-
-    res.json({ message: "Transaction saved successfully" });
-  } catch (err) {
-    console.error("Error saving transaction:", err);
-    res.status(500).json({ message: "Failed to save transaction" });
-  }
-});
- 
 app.post("/api/sentiment", (req, res) => {
   const { text } = req.body;  
   
@@ -1797,7 +1863,7 @@ app.post("/api/sentiment", (req, res) => {
     return res.status(400).json({ message: "Text is required" });
   }
 
-  const result = analyzeSentiment(text);  
+  const result = analyzeSentiment(text);
   res.json(result); 
 });
 

@@ -143,8 +143,8 @@ export default function ProfilePage() {
 return (
   <div className="flex">
       <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
-      <div className="flex-1 bg-gray-50 min-h-screen md:ml-70">
-      <Navbar onMenuClick={() => setIsOpen(true)} />
+      <div className={`flex-1 bg-gray-50 min-h-screen ${isOpen ? "md:ml-70" : "pl-16 md:pl-8"}`}>
+      <Navbar />
       <div className="flex flex-col min-h-screen pt-20">
   <div className="min-h-screen bg-gray-50 p-8 flex flex-col items-center space-y-6">
     <ToastContainer position="top-center" />

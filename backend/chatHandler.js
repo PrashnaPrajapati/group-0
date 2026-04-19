@@ -29,7 +29,20 @@ const initializeChat = (io) => {
          
         io.emit("user_online", { userId, isOnline: true });
  
-        socket.emit("admin_list", { adminIds: Array.from(onlineAdmins.keys()) });
+        db.query(
+          "SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC",
+          (err, results) => {
+            let adminIds = [];
+            if (!err && results && results.length > 0) {
+              adminIds = results.map((row) => row.id);
+              console.log(`📤 Found ${adminIds.length} admin(s):`, adminIds);
+            } else {
+              console.log("⚠️ No admins found in database or error:", err?.message);
+            }
+            console.log(`📤 Sending admin_list to user ${userId}:`, adminIds);
+            socket.emit("admin_list", { adminIds });
+          }
+        );
       } catch (error) {
         console.error("Error registering user:", error);
         socket.emit("error", { message: "Registration failed" });
@@ -64,27 +77,61 @@ const initializeChat = (io) => {
       try {
         const { conversationUserId } = data;
         const currentUserId = socket.userId;
+        const currentRole = socket.userRole;
+        
+        console.log("📥 request_history - currentUserId:", currentUserId, "role:", currentRole, "conversationUserId:", conversationUserId);
         
         if (!currentUserId) {
           return socket.emit("error", { message: "Not registered" });
         }
  
-        const query = `
-          SELECT id, senderId, receiverId, message, isRead, timestamp
-          FROM messages
-          WHERE (senderId = ? AND receiverId = ?) OR (senderId = ? AND receiverId = ?)
-          ORDER BY timestamp ASC
-          LIMIT 100
-        `;
+        let query = ``;
+        let params = [];
+        
+        // If conversation is with system admin (999999), handle differently for admins
+        if (conversationUserId === 999999 && currentRole === "admin") {
+          // Admin viewing system admin: show ALL messages from any user to system admin
+          query = `
+            SELECT id, senderId, receiverId, message, isRead, timestamp
+            FROM messages
+            WHERE receiverId = 999999
+            ORDER BY timestamp ASC
+            LIMIT 100
+          `;
+          params = [];
+        } else if (currentRole === "admin") {
+          // Admin viewing a specific user: show messages between admin and that user, plus user to any admin
+          query = `
+            SELECT id, senderId, receiverId, message, isRead, timestamp
+            FROM messages
+            WHERE (senderId = ? AND (receiverId = ? OR receiverId = 999999 OR receiverId IN (SELECT id FROM users WHERE role = 'admin')))
+            OR (senderId = ? AND receiverId = ?)
+            ORDER BY timestamp ASC
+            LIMIT 100
+          `;
+          params = [conversationUserId, currentUserId, currentUserId, conversationUserId];
+        } else {
+          // Regular user: show messages between them and the admin/system admin
+          query = `
+            SELECT id, senderId, receiverId, message, isRead, timestamp
+            FROM messages
+            WHERE (senderId = ? AND receiverId = ?) OR (senderId = ? AND receiverId = ?)
+            ORDER BY timestamp ASC
+            LIMIT 100
+          `;
+          params = [currentUserId, conversationUserId, conversationUserId, currentUserId];
+        }
 
         db.query(
           query,
-          [currentUserId, conversationUserId, conversationUserId, currentUserId],
+          params,
           (err, results) => {
             if (err) {
               console.error("Error fetching history:", err);
               return socket.emit("error", { message: "Failed to load history" });
             }
+
+            console.log("📊 History query results count:", results ? results.length : 0);
 
             const normalized = (results || []).map((record) => ({
               id: record.id,
@@ -96,6 +143,7 @@ const initializeChat = (io) => {
               created_at: record.timestamp || record.created_at,
             }));
 
+            console.log("📤 Emitting message_history with", normalized.length, "messages");
             socket.emit("message_history", {
               messages: normalized,
               conversationUserId,
@@ -148,13 +196,20 @@ const initializeChat = (io) => {
               created_at: new Date().toISOString(),
             };
  
-            const receiverSocketId =
-              senderRole === "users"
-                ? onlineAdmins.get(receiverId)
-                : onlineUsers.get(receiverId);
-
-            if (receiverSocketId) {
-              io.to(receiverSocketId).emit("receive_message", messageData);
+            console.log("📨 Message from", senderRole, senderId, "to", receiverId);
+            
+            if (senderRole === "users") {
+              console.log("📢 Broadcasting to all", onlineAdmins.size, "online admins");
+              for (let [adminId, adminSocketId] of onlineAdmins.entries()) {
+                io.to(adminSocketId).emit("receive_message", messageData);
+                console.log("   ✉️  Sent to admin", adminId);
+              }
+            } else {
+              const receiverSocketId = onlineUsers.get(receiverId);
+              if (receiverSocketId) {
+                io.to(receiverSocketId).emit("receive_message", messageData);
+                console.log("   ✉️  Sent to user", receiverId);
+              }
             }
  
             socket.emit("message_sent", messageData);

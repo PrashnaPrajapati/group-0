@@ -76,8 +76,8 @@ useEffect(() => {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
-      <div className="flex-col pl-70">
-      <Navbar onMenuClick={() => setIsOpen(true)} />
+      <div className={`flex-1 flex-col min-h-screen ${isOpen ? "md:ml-70" : "pl-16 md:pl-8"}`}>
+      <Navbar />
       
  
       <div className="flex flex-col min-h-screen pt-20">
@@ -153,7 +153,7 @@ useEffect(() => {
             </select> 
           </div>
           
-          <div className="mb-6 px-6">
+          <div className="max-w-7xl mx-auto px-6 mb-6">
          <p className="text-gray-600 font-bold text-xl bold mt-1">
             Explore our range of beauty services designed just for you.
          </p>

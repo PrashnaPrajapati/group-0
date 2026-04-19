@@ -34,12 +34,17 @@ export default function PaymentsPage() {
       return;
     }
 
+    if (!process.env.NEXT_PUBLIC_ESEWA_MERCHANT_CODE) {
+      setPaymentStatus("❌ Payment configuration error");
+      return;
+    }
+
     setLoading(true);
     setPaymentStatus(null);
 
     const transactionUuid = `TXN${Date.now()}`;
     const successUrl = `${window.location.origin}/payments/esewa-callback?bookingIds=${bookingIds.join(",")}&txnId=${transactionUuid}`;
-    const failUrl = `${window.location.origin}/payments/payment-failed`;
+    const failUrl = `${window.location.origin}/payments/payment-failed?bookingIds=${bookingIds.join(",")}`;
  
     try {
       const signatureResponse = await fetch("/api/payments/esewa-signature", {
@@ -112,8 +117,8 @@ export default function PaymentsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
-      <div className="flex flex-col min-h-screen md:ml-70">
-      <Navbar onMenuClick={() => setIsOpen(true)} />
+      <div className={`flex flex-col min-h-screen ${isOpen ? "md:ml-70" : "pl-16 md:pl-8"}`}>
+      <Navbar />
       <div className="flex flex-col min-h-screen pt-20">
         <main className="flex-1 p-8">
           <h1 className="text-3xl font-bold text-center mb-10 bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-purple-500">

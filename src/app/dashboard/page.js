@@ -274,10 +274,10 @@ export default function UserDashboard() {
  
   return (
     <div className="min-h-screen bg-gray-50">
-      <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} className="hidden md:block"/>
-      <div className="flex flex-col min-h-screen md:ml-70">
-      <Navbar onMenuClick={() => setIsOpen(true)} />
-      <div className="flex flex-col min-h-screen md:ml-10 pt-20">
+      <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
+      <div className={`flex flex-col min-h-screen ${isOpen ? "md:ml-70" : "pl-16 md:pl-8"}`}>
+      <Navbar />
+      <div className="flex flex-col min-h-screen pt-20">
         <main className="flex-1 p-6">
           <h1 className="text-3xl font-bold text-gray-800 mb-4 p-2">
             Hi, {user?.fullName || "User"} 👋

@@ -8,6 +8,7 @@ import NotificationSystem from "./NotificationSystem";
 
 const menu = [
   { name: "Dashboard", href: "/admin/dashboard" },
+  { name: "Users", href: "/admin/users" },
   { name: "Services", href: "/admin/services" },
   { name: "Packages", href: "/admin/packages" },
   { name: "AI Sentiments", href: "/admin/ai-sentiment" },

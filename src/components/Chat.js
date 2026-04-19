@@ -7,6 +7,7 @@ const Chat = ({ userId, isAdmin }) => {
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
   const [receiverId, setReceiverId] = useState(null);
+  const [adminIds, setAdminIds] = useState([]);
   const [usersList, setUsersList] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [onlineUsers, setOnlineUsers] = useState(new Set());
@@ -27,26 +28,42 @@ const Chat = ({ userId, isAdmin }) => {
       socket = io("http://localhost:5001");
     }
 
+
     const token = localStorage.getItem("token");
- 
-    if (isAdmin) {
-      socket.emit("register_admin", { adminId: userId, token }); 
-      socket.emit("get_users");
-    } else {
-      socket.emit("register_user", { userId, token }); 
-      setReceiverId(null);
-    } 
+  
+    // Set a timeout to clear loading after 5 seconds
+    const loadingTimeout = setTimeout(() => {
+      console.warn("⏱️ Loading timeout reached");
+      setLoading(false);
+    }, 5000);
+
     socket.on("message_history", (data) => {
+      console.log("📜 Received message_history:", data);
       setMessages(data.messages || []);
       setLoading(false);
+      clearTimeout(loadingTimeout);
     });
  
     socket.on("admin_list", (data) => {
-      if (!isAdmin && data && Array.isArray(data.adminIds) && data.adminIds.length > 0) {
-        const firstAdmin = data.adminIds[0];
-        console.log("🔔 Setting receiverId to first online admin:", firstAdmin);
+      console.log("🔔 Received admin_list event. isAdmin:", isAdmin, "data:", data);
+      if (!isAdmin) {
+        const adminIds = (data && Array.isArray(data.adminIds)) ? data.adminIds : [];
+        console.log("📋 Admin IDs from backend:", adminIds);
+        
+        // Only use system admin ID 999999 if NO real admins exist
+        let validAdminIds = adminIds;
+        if (adminIds.length === 0) {
+          console.warn("⚠️ No real admins found, using system admin 999999");
+          validAdminIds = [999999];
+        }
+        
+        const firstAdmin = validAdminIds[0];
+        console.log("✅ Setting receiver to:", firstAdmin, "(real admin" + (firstAdmin !== 999999 ? "" : " - system fallback") + ")");
+        
+        setAdminIds(validAdminIds);
         setReceiverId(firstAdmin);
- 
+        setSelectedUser({ id: firstAdmin, fullName: "Admin" });
+        setLoading(false);
         socket.emit("request_history", { conversationUserId: firstAdmin });
       }
     });
@@ -87,13 +104,21 @@ const Chat = ({ userId, isAdmin }) => {
         )
       );
     });
-
-    setLoading(false);
+ 
+    if (isAdmin) {
+      socket.emit("register_admin", { adminId: userId, token }); 
+      socket.emit("get_users");
+    } else {
+      socket.emit("register_user", { userId, token });
+    }
 
     return () => { 
+      clearTimeout(loadingTimeout);
       socket.off("message_history");
+      socket.off("admin_list");
       socket.off("receive_message");
       socket.off("users_list");
+      socket.off("user_online");
       socket.off("error");
       socket.off("message_sent");
     };
@@ -114,14 +139,21 @@ const Chat = ({ userId, isAdmin }) => {
       return;
     }
 
-    if (!receiverId) {
-      setError("No receiver selected");
+    const targetReceiverId = receiverId || (adminIds && adminIds.length > 0 ? adminIds[0] : 999999);
+
+    if (!targetReceiverId) {
+      setError("Unable to send message. Please reload the page.");
+      console.error("❌ No receiver ID available");
       return;
     }
- 
+
+    setError(null);
+
+    const isSystemAdminFallback = targetReceiverId === 999999;
+    
     const optimisticMessage = {
       sender_id: userId,
-      receiver_id: receiverId,
+      receiver_id: targetReceiverId,
       sender_role: isAdmin ? "admin" : "users",
       message_text: message.trim(),
       is_read: false,
@@ -130,21 +162,21 @@ const Chat = ({ userId, isAdmin }) => {
 
     setMessages((prev) => [...prev, optimisticMessage]);
      
-    console.log("📤 Sending message:", {
+    console.log("📤 Sending message to receiver " + targetReceiverId + (isSystemAdminFallback ? " (system admin fallback)" : " (real admin)"), {
       senderId: userId,
-      receiverId,
+      receiverId: targetReceiverId,
       senderRole: isAdmin ? "admin" : "users",
       message: message.trim(),
     });
 
     socket.emit("send_message", {
-      receiverId,
+      receiverId: targetReceiverId,
       message: message.trim(),
       senderId: userId,
       senderRole: isAdmin ? "admin" : "users",
     });
  
-    socket.emit("mark_as_read", { conversationUserId: receiverId });
+    socket.emit("mark_as_read", { conversationUserId: targetReceiverId });
 
     setMessage("");
     setError(null);
@@ -291,13 +323,15 @@ const Chat = ({ userId, isAdmin }) => {
   }
  
   return (
-    <div className="flex flex-col h-screen bg-white"> 
+    <div className="flex flex-col h-screen w-full bg-white"> 
       <div className="p-4 border-b border-gray-200 bg-gray-50">
-        <h2 className="text-lg font-bold text-gray-800">Chat with Admin</h2>
-        <p className="text-sm text-gray-500">Get help with your bookings and services</p>
+        <div className="max-w-4xl mx-auto text-left pr-4">
+          <h2 className="text-lg font-bold text-gray-800">Chat with Admin</h2>
+          <p className="text-sm text-gray-500">Get help with your bookings and services</p>
+        </div>
       </div>
  
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 w-full max-w-5xl mx-auto">
         {loading ? (
           <div className="text-center text-gray-500">Loading messages...</div>
         ) : messages.length === 0 ? (

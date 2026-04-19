@@ -56,10 +56,10 @@ export default function UserChatPage() {
   }
 
   return (
-    <div className="flex">
+    <div className="flex w-full min-h-screen bg-white">
       <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
-      <div className="flex-1 md:ml-70 flex flex-col min-h-screen">
-      <Navbar onMenuClick={() => setIsOpen(true)} />
+      <div className={`flex-1 flex flex-col min-h-screen ${isOpen ? "md:ml-70" : "pl-4 md:pl-8"}`}>
+      <Navbar />
 
     <div className="flex-1 flex flex-col min-h-screen pt-20">
       <Chat userId={userId} isAdmin={false} />

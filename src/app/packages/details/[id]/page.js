@@ -45,7 +45,7 @@ export default function PackageDetailsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Sidebar />
-      <div className="flex flex-col min-h-screen md:ml-70">
+      <div className="flex flex-col min-h-screen">
       <Navbar />
       <div className="flex flex-col min-h-screen pt-20">
         
