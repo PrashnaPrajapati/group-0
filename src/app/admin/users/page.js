@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import AdminSidebar from "@/components/AdminSidebar";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { getRole, getToken } from "@/lib/authStorage";
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState([]);
@@ -16,7 +17,7 @@ export default function AdminUsersPage() {
   const usersPerPage = 12;
   const router = useRouter();
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const token = getToken();
 
   const fetchUsers = async () => {
     try {
@@ -44,7 +45,7 @@ export default function AdminUsersPage() {
       return router.replace("/login");
     }
 
-    const role = localStorage.getItem("role");
+    const role = getRole();
     if (role !== "admin") {
       return router.replace("/dashboard");
     }

@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify";
 import TextInput from "@/components/TextInput";
 import PasswordInput from "@/components/PasswordInput";
 import Button from "@/components/Button";
 import {User, Mail, Phone, MapPin, Lock} from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import Navbar from "@/components/Navbar";
+import { getToken } from "@/lib/authStorage";
  
 export default function ProfilePage() {
   const [profile, setProfile] = useState({
@@ -26,7 +26,7 @@ export default function ProfilePage() {
   const [isOpen, setIsOpen] = useState(false);
  
   useEffect(() => {
-    const storedToken = localStorage.getItem("token");
+    const storedToken = getToken();
     if (storedToken) setToken(storedToken);
   }, []);
  
@@ -147,8 +147,6 @@ return (
       <Navbar />
       <div className="flex flex-col min-h-screen pt-20">
   <div className="min-h-screen bg-gray-50 p-8 flex flex-col items-center space-y-6">
-    <ToastContainer position="top-center" />
- 
     <div className="text-center space-y-2">
       <h1 className="text-4xl font-bold text-gray-800">My Profile</h1>
       <p className="text-gray-600 text-lg">Manage and Edit your personal information</p>

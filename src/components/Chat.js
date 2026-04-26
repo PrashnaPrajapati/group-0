@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import io from "socket.io-client";
+import { getToken } from "@/lib/authStorage";
 
 let socket = null;
 
@@ -13,7 +14,9 @@ const Chat = ({ userId, isAdmin }) => {
   const [onlineUsers, setOnlineUsers] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [unreadCounts, setUnreadCounts] = useState({});
   const messagesEndRef = useRef(null);
+  const selectedUserRef = useRef(null);
  
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -22,16 +25,38 @@ const Chat = ({ userId, isAdmin }) => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
- 
+
+  useEffect(() => {
+    selectedUserRef.current = selectedUser;
+  }, [selectedUser]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    const fetchUnreadCounts = async () => {
+      try {
+        const token = getToken();
+        const res = await fetch("http://localhost:5001/admin/messages/unread-per-user", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUnreadCounts(data);
+        }
+      } catch (err) {
+        console.error("Error fetching unread counts:", err);
+      }
+    };
+    fetchUnreadCounts();
+  }, [isAdmin]);
+
   useEffect(() => {
     if (!socket) {
       socket = io("http://localhost:5001");
     }
 
 
-    const token = localStorage.getItem("token");
-  
-    // Set a timeout to clear loading after 5 seconds
+    const token = getToken();
+
     const loadingTimeout = setTimeout(() => {
       console.warn("⏱️ Loading timeout reached");
       setLoading(false);
@@ -43,23 +68,22 @@ const Chat = ({ userId, isAdmin }) => {
       setLoading(false);
       clearTimeout(loadingTimeout);
     });
- 
+
     socket.on("admin_list", (data) => {
       console.log("🔔 Received admin_list event. isAdmin:", isAdmin, "data:", data);
       if (!isAdmin) {
         const adminIds = (data && Array.isArray(data.adminIds)) ? data.adminIds : [];
         console.log("📋 Admin IDs from backend:", adminIds);
-        
-        // Only use system admin ID 999999 if NO real admins exist
+
         let validAdminIds = adminIds;
         if (adminIds.length === 0) {
           console.warn("⚠️ No real admins found, using system admin 999999");
           validAdminIds = [999999];
         }
-        
+
         const firstAdmin = validAdminIds[0];
         console.log("✅ Setting receiver to:", firstAdmin, "(real admin" + (firstAdmin !== 999999 ? "" : " - system fallback") + ")");
-        
+
         setAdminIds(validAdminIds);
         setReceiverId(firstAdmin);
         setSelectedUser({ id: firstAdmin, fullName: "Admin" });
@@ -67,9 +91,18 @@ const Chat = ({ userId, isAdmin }) => {
         socket.emit("request_history", { conversationUserId: firstAdmin });
       }
     });
- 
+
     socket.on("receive_message", (messageData) => {
       setMessages((prev) => [...prev, messageData]);
+      if (isAdmin && messageData.sender_role === "users") {
+        const current = selectedUserRef.current;
+        if (!current || current.id !== messageData.sender_id) {
+          setUnreadCounts((prev) => ({
+            ...prev,
+            [messageData.sender_id]: (prev[messageData.sender_id] || 0) + 1,
+          }));
+        }
+      }
     });
  
     socket.on("users_list", (data) => {
@@ -127,9 +160,9 @@ const Chat = ({ userId, isAdmin }) => {
   const handleSelectUser = (user) => {
     setSelectedUser(user);
     setReceiverId(user.id);
-    setMessages([]); 
+    setMessages([]);
     setLoading(true);
-     
+    setUnreadCounts((prev) => ({ ...prev, [user.id]: 0 }));
     socket.emit("request_history", { conversationUserId: user.id });
   };
  
@@ -228,9 +261,16 @@ const Chat = ({ userId, isAdmin }) => {
                       <p className="font-semibold text-gray-800">{user.fullName}</p>
                       <p className="text-sm text-gray-500">{user.gender}</p>
                     </div>
-                    {onlineUsers.has(user.id) && (
-                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {onlineUsers.has(user.id) && (
+                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                      )}
+                      {unreadCounts[user.id] > 0 && (
+                        <span className="bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                          {unreadCounts[user.id] > 99 ? "99+" : unreadCounts[user.id]}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}

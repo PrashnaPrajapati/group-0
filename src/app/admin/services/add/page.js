@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { getToken } from "@/lib/authStorage";
 
 export default function AddServicePage() {
   const router = useRouter();
@@ -60,7 +61,7 @@ export default function AddServicePage() {
       const res = await fetch("http://localhost:5001/admin/services", {
         method: "POST",
         headers: { 
-          Authorization: "Bearer " + localStorage.getItem("token"),
+          Authorization: "Bearer " + getToken(),
         },
         body: formData,
       });

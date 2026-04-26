@@ -120,7 +120,7 @@ app.post("/signup", async (req, res) => {
  
 app.post("/login", async (req, res) => {
   try {
-    let { email, password } = req.body;
+    let { email, password, rememberMe } = req.body;
  
     if (!email || !password) {
       return res.status(400).json({ message: "Email and password are required" });
@@ -173,7 +173,7 @@ app.post("/login", async (req, res) => {
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role || "user" },
       process.env.SECRET_KEY,
-      { expiresIn: "1h" }
+      { expiresIn: rememberMe ? "30d" : "1h" }
     );
     
     return res.json({
@@ -286,11 +286,11 @@ app.get("/", (req, res) => {
   res.send("Chat server is running!");
 });
  
-initializeChat(io);
+// Initialize notification service (needed by chat to create notifications)
+const notificationService = new NotificationService(io);
 
-
-// Initialize notification service
-const notificationService = new NotificationService(io); 
+// Initialize chat (pass notification service for chat-message notifications)
+initializeChat(io, notificationService);
  
 const getReceiverByRole = (receiverId, senderRole) => {
   return new Promise((resolve, reject) => {
@@ -1122,17 +1122,17 @@ app.get("/bookings/booked-slots", (req, res) => {
   );
 }); 
 
-app.post("/bookings/:id/feedback", verifyUser, async (req, res) => {
+app.post("/bookings/:id/review", verifyUser, async (req, res) => {
   const bookingId = req.params.id;
   const userId = req.user?.id;
-  const { rating, feedback } = req.body;
+  const { rating, review } = req.body;
 
   if (!userId) {
     return res.status(401).json({ message: "Unauthorized: User not logged in" });
   }
 
-  if (!rating || !feedback) {
-    return res.status(400).json({ message: "Rating and feedback are required" });
+  if (!rating || !review) {
+    return res.status(400).json({ message: "Rating and review are required" });
   }
   if (rating < 1 || rating > 5) {
     return res.status(400).json({ message: "Rating must be between 1 and 5" });
@@ -1152,12 +1152,12 @@ app.post("/bookings/:id/feedback", verifyUser, async (req, res) => {
       [bookingId, userId]
     );
     if (existing.length > 0) { 
-      return res.status(400).json({ message: "Feedback already submitted for this booking" });
+      return res.status(400).json({ message: "Review already submitted for this booking" });
     }
 
     await db.promise().query(
       "INSERT INTO feedback (booking_id, user_id, rating, feedback_text, created_at) VALUES (?, ?, ?, ?, NOW())",
-      [bookingId, userId, rating, feedback]
+      [bookingId, userId, rating, review]
     );
 
     await db.promise().query(
@@ -1165,14 +1165,14 @@ app.post("/bookings/:id/feedback", verifyUser, async (req, res) => {
       [bookingId]
     );
 
-    return res.json({ message: "Feedback submitted successfully" });
+    return res.json({ message: "Review submitted successfully" });
   } catch (err) { 
-    console.error("Feedback route error:", err.stack || err);
+    console.error("Review route error:", err.stack || err);
     return res.status(500).json({ message: "Database error occurred", error: err.message });
   }
 });
 
-app.get("/bookings/:id/feedback", async (req, res) => {
+app.get("/bookings/:id/review", async (req, res) => {
   const bookingId = req.params.id;
 
   try {
@@ -1186,10 +1186,10 @@ app.get("/bookings/:id/feedback", async (req, res) => {
 
     res.json({
       bookingId,
-      feedbacks: rows.map(f => ({
+      reviews: rows.map(f => ({
         customer: f.customer,
         rating: f.rating,
-        feedback: f.feedback_text,
+        review: f.feedback_text,
         submittedAt: f.created_at
       }))
     });
@@ -1199,10 +1199,10 @@ app.get("/bookings/:id/feedback", async (req, res) => {
   }
 });
  
-app.get("/feedback", verifyAdmin, async (req, res) => {
+app.get("/review", verifyAdmin, async (req, res) => {
   try {
     const [rows] = await db.promise().query(
-      `SELECT f.booking_id AS bookingId, u.fullname AS customer, f.rating, f.feedback_text AS feedback, f.created_at
+      `SELECT f.booking_id AS bookingId, u.fullname AS customer, f.rating, f.feedback_text AS review, f.created_at
        FROM feedback f
        JOIN users u ON f.user_id = u.id
        ORDER BY f.created_at DESC`
@@ -1651,7 +1651,7 @@ app.get("/admin/service-categories", verifyAdmin, async (req, res) => {
 
 app.get("/admin/ai-sentiment", verifyAdmin, async (req, res) => {
   try {
-    const [feedbackRows] = await db.promise().query(
+    const [reviewRows] = await db.promise().query(
       `SELECT feedback_text FROM feedback WHERE feedback_text IS NOT NULL AND TRIM(feedback_text) <> ''`
     );
 
@@ -1661,12 +1661,12 @@ app.get("/admin/ai-sentiment", verifyAdmin, async (req, res) => {
       negative: 0,
     };
 
-    feedbackRows.forEach((row) => {
-      const feedbackText = String(row.feedback_text || "").trim();
-      if (!feedbackText) return;
+    reviewRows.forEach((row) => {
+      const reviewText = String(row.feedback_text || "").trim();
+      if (!reviewText) return;
 
       try {
-        const sentiment = vader.SentimentIntensityAnalyzer.polarity_scores(feedbackText);
+        const sentiment = vader.SentimentIntensityAnalyzer.polarity_scores(reviewText);
         const compound = sentiment.compound;
 
         if (compound >= 0.05) {
@@ -1677,7 +1677,7 @@ app.get("/admin/ai-sentiment", verifyAdmin, async (req, res) => {
           counts.neutral += 1;
         }
       } catch (error) {
-        console.error("Error analyzing sentiment for text:", feedbackText, error); 
+        console.error("Error analyzing sentiment for text:", reviewText, error); 
         counts.neutral += 1;
       }
     });
@@ -1711,8 +1711,8 @@ app.get("/admin/ai-sentiment-details", verifyAdmin, async (req, res) => {
     const [countResult] = await db.promise().query(`SELECT COUNT(*) AS total FROM feedback f LEFT JOIN users u ON f.user_id = u.id ${whereClause}`, params);
     const total = countResult[0]?.total || 0;
 
-    const [feedbackRows] = await db.promise().query(
-      `SELECT f.id, f.booking_id, f.user_id, u.fullname AS customer, f.feedback_text AS feedback, f.rating, f.created_at
+    const [reviewRows] = await db.promise().query(
+      `SELECT f.id, f.booking_id, f.user_id, u.fullname AS customer, f.feedback_text AS review, f.rating, f.created_at
        FROM feedback f
        LEFT JOIN users u ON f.user_id = u.id
        ${whereClause}
@@ -1721,8 +1721,8 @@ app.get("/admin/ai-sentiment-details", verifyAdmin, async (req, res) => {
       [...params, limit, offset]
     );
 
-    const details = feedbackRows.map((entry) => {
-      const text = (entry.feedback || "").trim();
+    const details = reviewRows.map((entry) => {
+      const text = (entry.review || "").trim();
       let compound = 0;
       let label = "neutral";
       try {
@@ -1737,7 +1737,7 @@ app.get("/admin/ai-sentiment-details", verifyAdmin, async (req, res) => {
       return {
         id: entry.id,
         customer: entry.customer || "Unknown",
-        feedback: text,
+        review: text,
         rating: entry.rating,
         createdAt: entry.created_at,
         sentiment: label,
@@ -1917,6 +1917,40 @@ app.put("/notifications/mark-all-read", verifyUser, async (req, res) => {
   } catch (error) {
     console.error("Error marking all notifications as read:", error);
     res.status(500).json({ message: "Failed to mark notifications as read" });
+  }
+});
+
+// Unread chat message count for current user
+app.get("/messages/unread-count", verifyUser, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const [result] = await db.promise().query(
+      "SELECT COUNT(*) AS unreadCount FROM messages WHERE receiverId = ? AND isRead = FALSE",
+      [userId]
+    );
+    res.json({ unreadCount: result[0]?.unreadCount || 0 });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Unread chat message count per sender for admin
+app.get("/admin/messages/unread-per-user", verifyAdmin, async (req, res) => {
+  try {
+    const adminId = req.user.id;
+    const [results] = await db.promise().query(
+      `SELECT senderId AS userId, COUNT(*) AS unreadCount
+       FROM messages WHERE receiverId = ? AND isRead = FALSE
+       GROUP BY senderId`,
+      [adminId]
+    );
+    const counts = {};
+    results.forEach(row => { counts[row.userId] = row.unreadCount; });
+    res.json(counts);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
   }
 });
 

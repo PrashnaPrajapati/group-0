@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import AdminSidebar from "@/components/AdminSidebar";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { getToken } from "@/lib/authStorage";
 
 export default function AdminPackagesPage() {
   const router = useRouter();
@@ -13,8 +14,7 @@ export default function AdminPackagesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const packagesPerPage = 10;
 
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const token = getToken();
 
   const fetchPackages = async () => {
     try {

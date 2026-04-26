@@ -7,9 +7,11 @@ import Logo from "@/components/Logo";
 import TextInput from "@/components/TextInput";
 import PasswordInput from "@/components/PasswordInput";
 import Button from "@/components/Button";
+import GoogleButton from "@/components/GoogleButton";
+import { setAuthSession } from "@/lib/authStorage";
 import { User, Phone, Mail } from "lucide-react";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify";
+import { notify } from "@/lib/notify";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -180,15 +182,13 @@ export default function SignupPage() {
 
       if (!res.ok) {
         toast.dismiss(creatingToastId);
-        toast.error(data.message || "Signup failed", {
-          position: "top-center", 
-        });
+        notify.error(data.message || "Signup failed");
         setLoading(false);
         return;
       } 
      
       toast.update(creatingToastId, {
-        render: "Account Created Successfully!",
+        render: "Account Created! Signing you in...",
         type: "success", 
         hideProgressBar: false,
         closeOnClick: true,
@@ -196,16 +196,33 @@ export default function SignupPage() {
         draggable: true,
       });
 
-      setTimeout(() => {
+      try {
+        const loginRes = await fetch("http://localhost:5001/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: email.trim(),
+            password: password.trim(),
+            rememberMe: false,
+          }),
+        });
+
+        const loginData = await loginRes.json();
+        if (!loginRes.ok || !loginData?.token) {
+          router.push("/login");
+          return;
+        }
+
+        setAuthSession(loginData.token, loginData.user?.role, false);
+        router.push("/services");
+      } catch {
         router.push("/login");
-      }, 1000);
+      }
 
     } catch (err) {
       console.error(err);
       toast.dismiss(creatingToastId);
-      toast.error("Something went wrong. Please try again.", {
-        position: "top-center", 
-      });
+      notify.error("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -213,16 +230,6 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen flex bg-white">
-      <ToastContainer 
-      position ="top-center" 
-      hideProgressBar={false}
-      newestOnTop={false} 
-      closeOnClick
-      rtl={false}
-      pauseOnFocusLoss
-      draggable
-      pauseOnHover
-      /> 
       <div className="hidden md:block w-1/2">
         <img
           src="/signup.png"
@@ -374,6 +381,16 @@ export default function SignupPage() {
             <Button type="submit" fullWidth disabled={loading}>
               {loading ? "Creating Account..." : "Create Account"}
             </Button>
+
+            <div className="flex items-center my-2">
+              <hr className="flex-grow border-gray-300" />
+              <span className="mx-3 text-gray-500 text-sm">
+                Or continue with
+              </span>
+              <hr className="flex-grow border-gray-300" />
+            </div>
+
+            <GoogleButton />
 
             <div className="text-center text-sm mt-4 text-gray-500">
             Already have an account?{" "}

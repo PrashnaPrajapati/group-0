@@ -5,6 +5,8 @@ import { jwtDecode } from "jwt-decode";
 import Chat from "@/components/Chat";
 import Sidebar from "@/components/Sidebar";
 import Navbar from "@/components/Navbar";
+import Link from "next/link";
+import { getToken } from "@/lib/authStorage";
 
 export default function UserChatPage() {
   const [isOpen, setIsOpen] = useState(false);
@@ -14,7 +16,7 @@ export default function UserChatPage() {
   useEffect(() => {
     console.log("🔐 Chat page useEffect running...");
     
-    const token = localStorage.getItem("token"); 
+    const token = getToken();
     
     console.log("📦 Token from localStorage:", token ? "✅ Found" : "❌ Not found");
     console.log("🔍 All localStorage keys:", Object.keys(localStorage));
@@ -50,7 +52,7 @@ export default function UserChatPage() {
     return (
       <div className="text-center mt-8">
         <p className="text-lg">Please log in to access chat.</p>
-        <p className="text-sm text-gray-500 mt-2"><a href="/login" className="text-blue-500 hover:underline">Go to login</a></p>
+        <p className="text-sm text-gray-500 mt-2"><Link href="/login" className="text-blue-500 hover:underline">Go to login</Link></p>
       </div>
     );
   }

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
+import { getToken } from "@/lib/authStorage";
  
 export default function BookingsPage() {
   const searchParams = useSearchParams();
@@ -36,8 +37,7 @@ export default function BookingsPage() {
   const [bookedSlots, setBookedSlots] = useState([]);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const token = getToken();
 
   const timeSlots = ["09:00","10:00","11:00","12:00","14:00","15:00","16:00","17:00","18:00"];
  

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import AdminSidebar from "@/components/AdminSidebar";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { getToken } from "@/lib/authStorage";
 
 export default function AddPackagePage() {
   const router = useRouter();
@@ -20,8 +21,7 @@ export default function AddPackagePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const token = getToken();
 
   useEffect(() => {
     fetch("http://localhost:5001/services")

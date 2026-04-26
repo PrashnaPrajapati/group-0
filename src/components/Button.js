@@ -9,13 +9,7 @@ export default function Button({
     <button
       type={type}
       {...props}
-      className={`
-        ${fullWidth ? "w-full" : "w-auto"}
-        px-6 py-3 rounded-lg text-white font-semibold
-        bg-gradient-to-r from-pink-500 to-purple-500
-        hover:opacity-90 transition disabled:opacity-50
-        ${className}
-      `}
+      className={`btn-primary ${fullWidth ? "w-full" : "w-auto"} ${className}`}
     >
       {children}
     </button>

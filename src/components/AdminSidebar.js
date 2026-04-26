@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { jwtDecode } from "jwt-decode";
 import NotificationSystem from "./NotificationSystem";
+import { getToken } from "@/lib/authStorage";
 
 const menu = [
   { name: "Dashboard", href: "/admin/dashboard" },
@@ -22,7 +23,7 @@ export default function AdminSidebar({ children }) {
   const [userRole, setUserRole] = useState(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = getToken();
     if (token) {
       try {
         const decoded = jwtDecode(token);

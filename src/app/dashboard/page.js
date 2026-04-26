@@ -6,6 +6,7 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Sidebar from "@/components/Sidebar";
 import Navbar from "@/components/Navbar";
+import { getToken } from "@/lib/authStorage";
  
 function parseJwt(token) {
   try {
@@ -29,7 +30,7 @@ export default function UserDashboard() {
 
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
   const [currentBooking, setCurrentBooking] = useState(null);
  
   const [newDate, setNewDate] = useState("");
@@ -42,7 +43,7 @@ export default function UserDashboard() {
   const [reasonCustom, setReasonCustom] = useState("");
  
   const [rating, setRating] = useState(0);
-  const [feedbackText, setFeedbackText] = useState("");
+  const [reviewText, setReviewText] = useState("");
 
   const timeSlots = ["09:00","10:00","11:00","12:00","14:00","15:00","16:00","17:00","18:00"];
 
@@ -61,7 +62,7 @@ export default function UserDashboard() {
  
   useEffect(() => {
     setMounted(true);
-    const t = localStorage.getItem("token");
+    const t = getToken();
     setToken(t);
 
     if (!t) {
@@ -96,7 +97,7 @@ export default function UserDashboard() {
               total_amount: booking.package_id
                 ? booking.package_price
                 : booking.service_price,
-              feedback_submitted: booking.feedback_submitted || false,
+              review_submitted: booking.feedback_submitted || false,
             });
           }
           return acc;
@@ -219,37 +220,37 @@ export default function UserDashboard() {
     }
   };
  
-  const openFeedbackModal = (booking) => {
+  const openReviewModal = (booking) => {
     setCurrentBooking(booking);
     setRating(0);
-    setFeedbackText("");
-    setShowFeedbackModal(true);
+    setReviewText("");
+    setShowReviewModal(true);
   };
 
-  const handleSubmitFeedback = async () => {
+  const handleSubmitReview = async () => {
     if (!currentBooking) return;
     if (!userId) {
       toast.error("User not logged in");
       return;
     }
-    if (rating === 0 || feedbackText.trim() === "") {
-      toast.error("Please provide a rating and feedback.");
+    if (rating === 0 || reviewText.trim() === "") {
+      toast.error("Please provide a rating and review.");
       return;
     }
 
     try {
-      const res = await fetch(`http://localhost:5001/bookings/${currentBooking.id}/feedback`, {
+      const res = await fetch(`http://localhost:5001/bookings/${currentBooking.id}/review`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ userId, rating, feedback: feedbackText }),
+        body: JSON.stringify({ userId, rating, review: reviewText }),
       });
 
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        toast.error(data?.message || "Feedback submission failed");
+        toast.error(data?.message || "Review submission failed");
         return;
       }
 
@@ -257,15 +258,15 @@ export default function UserDashboard() {
         ...prev,
         completed: prev.completed.map(b =>
           b.id === currentBooking.id
-            ? { ...b, feedback_submitted: true }
+            ? { ...b, review_submitted: true }
             : b
         ),
       }));
 
-      setShowFeedbackModal(false);
+      setShowReviewModal(false);
       setRating(0);
-      setFeedbackText("");
-      toast.success("Thank you for your feedback!");
+      setReviewText("");
+      toast.success("Thank you for your review!");
     } catch (err) {
       console.error(err);
       toast.error("Something went wrong. Please try again.");
@@ -337,10 +338,10 @@ export default function UserDashboard() {
                     </div>
                   )}
  
-                  {b.status === "completed" && !b.feedback_submitted && (
+                  {b.status === "completed" && !b.review_submitted && (
                     <div className="flex gap-2">
-                      <button onClick={() => openFeedbackModal(b)} className="flex-1 py-2 px-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded hover:scale-105 transition">
-                        Leave Feedback
+                      <button onClick={() => openReviewModal(b)} className="flex-1 py-2 px-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded hover:scale-105 transition">
+                        Leave Review
                       </button>
                     </div>
                   )}
@@ -512,10 +513,10 @@ export default function UserDashboard() {
             </div>
           )}
  
-          {showFeedbackModal && (
+          {showReviewModal && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
               <div className="bg-white p-6 rounded-xl w-96 max-h-[90vh] overflow-y-auto">
-                <h2 className="text-gray-800 text-lg font-bold mb-4">Leave Feedback</h2>
+                <h2 className="text-gray-800 text-lg font-bold mb-4">Leave Review</h2>
 
                 <p className="text-gray-700 mb-2">Rate your experience:</p>
                 <div className="flex gap-1 mb-4">
@@ -535,22 +536,22 @@ export default function UserDashboard() {
                 </div>
 
                 <textarea
-                  value={feedbackText}
-                  onChange={(e) => setFeedbackText(e.target.value)}
-                  placeholder="Your feedback..."
+                  value={reviewText}
+                  onChange={(e) => setReviewText(e.target.value)}
+                  placeholder="Your review..."
                   className="w-full p-2 border rounded text-gray-700 mb-4"
                   rows={4}
                 />
 
                 <div className="flex gap-3 mt-4">
                   <button
-                    onClick={handleSubmitFeedback}
+                    onClick={handleSubmitReview}
                     className="flex-1 py-2 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded hover:scale-105 transition"
                   >
-                    Submit Feedback
+                    Submit Review
                   </button>
                   <button
-                    onClick={() => setShowFeedbackModal(false)}
+                    onClick={() => setShowReviewModal(false)}
                     className="flex-1 py-2 bg-gray-300 text-gray-700 rounded hover:scale-105 transition"
                   >
                     Cancel

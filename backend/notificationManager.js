@@ -1,7 +1,6 @@
 const db = require("./db");
 
-class NotificationManager {
-  // Create a notification
+class NotificationManager { 
   static createNotification(userId, title, message, type, relatedId = null) {
     return new Promise((resolve, reject) => {
       db.query(
@@ -18,8 +17,7 @@ class NotificationManager {
       );
     });
   }
-
-  // Get notifications for a user
+ 
   static getNotifications(userId, limit = 50) {
     return new Promise((resolve, reject) => {
       db.query(
@@ -36,8 +34,7 @@ class NotificationManager {
       );
     });
   }
-
-  // Mark notification as read
+ 
   static markAsRead(notificationId, userId) {
     return new Promise((resolve, reject) => {
       db.query(
@@ -54,8 +51,7 @@ class NotificationManager {
       );
     });
   }
-
-  // Mark all notifications as read for a user
+ 
   static markAllAsRead(userId) {
     return new Promise((resolve, reject) => {
       db.query(
@@ -72,8 +68,7 @@ class NotificationManager {
       );
     });
   }
-
-  // Get unread count
+ 
   static getUnreadCount(userId) {
     return new Promise((resolve, reject) => {
       db.query(
@@ -90,8 +85,7 @@ class NotificationManager {
       );
     });
   }
-
-  // Delete old notifications (cleanup function)
+ 
   static deleteOldNotifications(daysOld = 30) {
     return new Promise((resolve, reject) => {
       db.query(

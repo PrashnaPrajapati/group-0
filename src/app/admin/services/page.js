@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ToastContainer, toast } from "react-toastify";
 import AdminSidebar from "@/components/AdminSidebar";
 import "react-toastify/dist/ReactToastify.css";
+import { getToken } from "@/lib/authStorage";
 
 export default function AdminServicesPage() {
   const [services, setServices] = useState([]);
@@ -15,7 +16,7 @@ export default function AdminServicesPage() {
  
   const fetchServices = async () => {
     try {
-      const token = localStorage.getItem("token"); 
+      const token = getToken();
       const res = await fetch("http://localhost:5001/admin/services", {
         headers: { Authorization: `Bearer ${token}` },
       }); 
@@ -84,7 +85,7 @@ export default function AdminServicesPage() {
             `http://localhost:5001/admin/services/${service.id}/${action}`,
             {
               method: "PUT",
-              headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+              headers: { Authorization: `Bearer ${getToken()}` },
             }
           );
 

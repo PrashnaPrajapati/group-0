@@ -6,11 +6,18 @@ import Button from "@/components/Button";
 import Logo from "@/components/Logo";
 import Footer from "@/components/Footer";
 import Image from "next/image";
+import { getToken } from "@/lib/authStorage";
 
 export default function HomePage() {
   const [services, setServices] = useState([]);
   const [page, setPage] = useState(0);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const itemsPerPage = 4; 
+
+  useEffect(() => {
+    const token = getToken();
+    setIsLoggedIn(Boolean(token));
+  }, []);
 
   useEffect(() => {
     async function fetchServices() {
@@ -55,6 +62,7 @@ export default function HomePage() {
   ];
 
   const visibleServices = services.slice(page * itemsPerPage, (page + 1) * itemsPerPage);
+  const bookNowHref = isLoggedIn ? "/services" : "/signup";
 
   return (
     <div className="bg-[#fff7fa] text-gray-800">
@@ -87,8 +95,8 @@ export default function HomePage() {
           Choose from makeup, hair, massage, nails and more.
         </p>
 
-        <Link href="/signup"> 
-          <Button>Book Now</Button>
+        <Link href={bookNowHref}> 
+          <Button>Explore Services</Button>
         </Link>
       </section>
 
@@ -124,10 +132,7 @@ export default function HomePage() {
                   <p className="text-sm text-gray-500 mb-4">
                     {service.description}
                   </p>
-                  
-                  <Link href="/signup">
-                  <Button className="py-2 text-sm">Book Now</Button>
-                  </Link>
+                   
                 </div>
               </div>
             )) : 
@@ -191,7 +196,7 @@ export default function HomePage() {
               Book your first service today and experience beauty like never before
               </p>
             
-            <Link href="/signup">
+            <Link href={bookNowHref}>
               <Button>Get Started Now</Button>
               </Link>
           </div>

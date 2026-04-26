@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { getToken } from "@/lib/authStorage";
 
 export default function EditServicePage() {
   const router = useRouter();
@@ -32,7 +33,7 @@ export default function EditServicePage() {
       try {
         const res = await fetch(`http://localhost:5001/admin/services`, {
           headers: {
-            Authorization: "Bearer " + localStorage.getItem("token"),
+            Authorization: "Bearer " + getToken(),
           },
         });
 
@@ -100,7 +101,7 @@ export default function EditServicePage() {
       const res = await fetch(`http://localhost:5001/admin/services/${id}`, {
         method: "PUT",
         headers: {
-          Authorization: "Bearer " + localStorage.getItem("token"),
+          Authorization: "Bearer " + getToken(),
         },
         body: formData,
       });

@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ToastContainer, toast } from "react-toastify";
 import AdminSidebar from "@/components/AdminSidebar";
-import "react-toastify/dist/ReactToastify.css";
+import { getRole, getToken } from "@/lib/authStorage";
+import { notify } from "@/lib/notify";
+import { createSafeFetch } from "@/lib/safeFetch";
 
 import {
-  LineChart, Line,
+  AreaChart, Area,
   BarChart, Bar,
   PieChart, Pie,
   XAxis, YAxis,
@@ -16,57 +17,42 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function fillMonthlyData(apiData) {
+  const year = apiData.length > 0
+    ? apiData[0].month.split("-")[0]
+    : new Date().getFullYear().toString();
+
+  const lookup = {};
+  apiData.forEach(item => { lookup[item.month] = item; });
+
+  return MONTH_LABELS.map((label, i) => {
+    const key = `${year}-${String(i + 1).padStart(2, "0")}`;
+    return {
+      month: label,
+      bookings: lookup[key]?.bookings || 0,
+      revenue: lookup[key]?.revenue || 0,
+    };
+  });
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
-  const [stats, setStats] = useState(null);  
-  const [loading, setLoading] = useState(true); 
+  const { safeFetch } = createSafeFetch(router);
+
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("services");
- 
+
   const [monthlyData, setMonthlyData] = useState([]);
   const [categoryData, setCategoryData] = useState([]);
   const [sentimentData, setSentimentData] = useState([]);
 
-  const ensureAuth = (status) => {
-    if (status === 401 || status === 403) {
-      toast.error("Session expired or unauthorized. Please login again.");
-      localStorage.removeItem("token");
-      localStorage.removeItem("role");
-      router.replace("/login");
-      return false;
-    }
-    return true;
-  };
-
-  const safeFetch = async (url, token) => {
-    try {
-      const res = await fetch(url, { headers: { Authorization: token ? `Bearer ${token}` : "" } });
-
-      if (res.status === 401 || res.status === 403) {
-        ensureAuth(res.status);
-        return [];
-      }
-
-      const json = await res.json().catch(() => null);
-      if (!res.ok) {
-        console.error("safeFetch bad response", url, res.status, json);
-        return [];
-      }
-
-      if (Array.isArray(json)) return json;
-      if (json && Array.isArray(json.data)) return json.data;
-      if (json && typeof json === "object" && Object.keys(json).length === 0) return [];
-
-      return [];
-    } catch (err) {
-      console.error("Fetch error:", err);
-      return [];
-    }
-  };
-
   const [servicesList, setServicesList] = useState([]);
   const [packagesList, setPackagesList] = useState([]);
   const [bookingsList, setBookingsList] = useState([]);
-  const [feedbackList, setFeedbackList] = useState([]);
+  const [reviewList, setReviewList] = useState([]);
 
   const COLORS = ["#ec4899", "#a855f7", "#6366f1", "#14b8a6", "#facc15"];
 
@@ -78,8 +64,8 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const role = localStorage.getItem("role"); 
+    const token = getToken();
+    const role = getRole();
     if (!token) return router.replace("/login"); 
     if (role !== "admin") return router.replace("/dashboard");
  
@@ -92,7 +78,7 @@ export default function AdminDashboard() {
         setStats(data);
       } catch (err) {
         console.error(err);
-        toast.error("Failed to load stats");
+        notify.error("Failed to load stats");
       } finally {
         setLoading(false);
       }
@@ -112,17 +98,17 @@ export default function AdminDashboard() {
       const coloredCategory = category.map((item, i) => ({ ...item, fill: COLORS[i % COLORS.length] }));
       const coloredSentiment = sentiment.map((item, i) => ({ ...item, fill: COLORS[i % COLORS.length] }));
 
-      setMonthlyData(monthly);
+      setMonthlyData(fillMonthlyData(monthly));
       setCategoryData(coloredCategory);
       setSentimentData(coloredSentiment);
     };
 
     const fetchTabData = async () => {
-      const [services, packages, bookings, feedback] = await Promise.all([
+      const [services, packages, bookings, review] = await Promise.all([
         safeFetch("http://localhost:5001/services", token),
         safeFetch("http://localhost:5001/packages", token),
         safeFetch("http://localhost:5001/admin/bookings", token),
-        safeFetch("http://localhost:5001/feedback", token),
+        safeFetch("http://localhost:5001/review", token),
         
       ]);
  
@@ -138,7 +124,7 @@ export default function AdminDashboard() {
       );
 
       setBookingsList(bookings.slice(0,5));
-      setFeedbackList(feedback);
+      setReviewList(review);
     };
 
     fetchDashboard();
@@ -150,7 +136,6 @@ export default function AdminDashboard() {
 
   return (
     <AdminSidebar>
-      <ToastContainer position="top-center" />
       <div className="space-y-8">
         <div className="flex flex-col gap-1 text-gray-600">
           <p className="text-2xl font-medium">Welcome back, Admin!</p>
@@ -166,35 +151,47 @@ export default function AdminDashboard() {
         <div className="grid md:grid-cols-2 gap-8 mt-6">
 
           <ChartCard title={<span style={{ color: '#000000' }}>Monthly Bookings</span>}>
-            {monthlyData.length === 0 ? (
-              <div className="p-6 text-center text-gray-500">No monthly bookings data available.</div>
-            ) : (
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={monthlyData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="bookings" stroke="#ec4899" strokeWidth={3} />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
+            <ResponsiveContainer width="100%" height={250}>
+              <AreaChart data={monthlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="bookingsGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#ec4899" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#ec4899" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                <XAxis
+                  dataKey="month"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: '#666', fontSize: 12 }}
+                  padding={{ left: 20, right: 20 }}
+                />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#666', fontSize: 12 }} />
+                <Tooltip />
+                <Area
+                  type="monotone"
+                  dataKey="bookings"
+                  stroke="#ec4899"
+                  strokeWidth={3}
+                  fill="url(#bookingsGradient)"
+                  dot={{ r: 4, fill: "#ec4899", stroke: "#ffffff", strokeWidth: 2 }}
+                  activeDot={{ r: 6, fill: "#ec4899", stroke: "#ffffff", strokeWidth: 2 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </ChartCard>
 
           <ChartCard title={<span style={{ color: '#000000' }}>Revenue</span>}>
-            {monthlyData.length === 0 ? (
-              <div className="p-6 text-center text-gray-500">No revenue data available yet.</div>
-            ) : (
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={monthlyData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="revenue" fill="#a855f7" />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="revenue" fill="#a855f7" />
+              </BarChart>
+            </ResponsiveContainer>
           </ChartCard>
           
           <ChartCard title={<span style={{ color: '#000000' }}>Service Category Distribution</span>}>
@@ -218,7 +215,7 @@ export default function AdminDashboard() {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="sentiment" />
                 <YAxis />
-                <Tooltip formatter={value => [value, "Feedbacks"]} />
+                <Tooltip formatter={value => [value, "Reviews"]} />
                 <Bar dataKey="count" fill="#ec4899" />
               </BarChart>
             </ResponsiveContainer>
@@ -226,7 +223,7 @@ export default function AdminDashboard() {
         </div>
  
         <div className="bg-gray-100 rounded-full p-2 flex md:w-3/4 mx-auto mt-8 text-gray-600">
-          {["services","packages","bookings","feedback"].map(tab => (
+          {["services","packages","bookings","review"].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -246,8 +243,8 @@ export default function AdminDashboard() {
             {activeTab === "bookings" && (
               <TabContent title="Top 5 Bookings" items={bookingsList} type="bookings" />
             )}
-            {activeTab === "feedback" && (
-              <TabContent title="All Feedbacks" items={feedbackList} type="feedback" />
+            {activeTab === "review" && (
+              <TabContent title="All Reviews" items={reviewList} type="review" />
             )}
           </div>
                 </div>
@@ -304,9 +301,9 @@ function TabContent({ title, items, type }) {
                 <th className="p-3">Status</th>
                 <th className="p-3">Amount</th>
               </>}
-              {type === "feedback" && <>
+              {type === "review" && <>
                 <th className="p-3">Customer</th>
-                <th className="p-3">Feedback</th>
+                <th className="p-3">Review</th>
                 <th className="p-3">Rating</th>
               </>}
             </tr>
@@ -343,7 +340,7 @@ function TabContent({ title, items, type }) {
                           method: "PUT",
                           headers: {
                             "Content-Type": "application/json",
-                            Authorization: `Bearer ${localStorage.getItem("token")}`,
+                            Authorization: `Bearer ${getToken()}`,
                           },
                           body: JSON.stringify({ status: newStatus }),
                         }).catch(err => console.error("Failed to update status:", err));
@@ -360,9 +357,9 @@ function TabContent({ title, items, type }) {
                   </td>
                   <td className="p-3 text-gray-600 font-semibold">{item.service_price || item.package_price || 0}</td>
                 </>}
-                {type === "feedback" && <>
+                {type === "review" && <>
                   <td className="p-3 font-medium">{item.customer}</td>
-                  <td className="p-3">{item.feedback}</td>
+                  <td className="p-3">{item.review}</td>
                   <td className="p-3">{item.rating || "-"}</td>
                 </>}
               </tr>

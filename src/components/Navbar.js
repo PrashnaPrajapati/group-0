@@ -6,6 +6,7 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { jwtDecode } from "jwt-decode";
 import NotificationSystem from "./NotificationSystem";
+import { clearAuthSession, getToken } from "@/lib/authStorage";
 
 export default function Navbar({ onMenuClick }) {
   const router = useRouter();
@@ -14,17 +15,17 @@ export default function Navbar({ onMenuClick }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [userId, setUserId] = useState(null);
   const [userRole, setUserRole] = useState(null);
+  const [chatUnreadCount, setChatUnreadCount] = useState(0);
 
   const fetchProfile = () => {
-    const token = localStorage.getItem("token");
+    const token = getToken();
     if (!token) {
       setUser(null);
       setUserId(null);
       setUserRole(null);
       return;
     }
-
-    // Decode token to get user info
+ 
     try {
       const decoded = jwtDecode(token);
       setUserId(decoded.id);
@@ -74,7 +75,7 @@ export default function Navbar({ onMenuClick }) {
           <div className="flex gap-2">
             <button
               onClick={() => {
-                localStorage.removeItem("token");
+                clearAuthSession();
                 router.push("/login");
                 closeToast();
               }}
@@ -102,36 +103,34 @@ export default function Navbar({ onMenuClick }) {
   return (
     <>
     <div className="fixed top-0 left-0 right-0 flex justify-between items-center bg-gray-100 px-6 py-4 shadow-md border-b h-20 z-50">
-
-      {/* LEFT SIDE */}
+ 
       <div className="flex items-center gap-4">
         {/* LOGO */} 
         <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
           ✦ Singar Glow
         </h1>
       </div>
-
-      {/* RIGHT SIDE */}
+ 
       <div className="flex items-center gap-6">
-
-        {/* Notifications */}
-        <NotificationSystem userId={userId} userRole={userRole} />
-
-        {/* Chat */}
+ 
+        <NotificationSystem userId={userId} userRole={userRole} onChatCountChange={setChatUnreadCount} />
         <button
           onClick={() => router.push("/chat")}
-          className="text-2xl"
+          className="relative text-2xl p-2 hover:bg-gray-100 rounded-full"
         >
           💬
+          {chatUnreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+              {chatUnreadCount > 99 ? "99+" : chatUnreadCount}
+            </span>
+          )}
         </button>
-
-        {/* Profile */}
+ 
         <div className="relative">
           <button
             onClick={() => {
               setShowProfileMenu(!showProfileMenu);
-              setShowNotifications(false);
-            }}
+            }} 
             className="flex items-center gap-2"
           >
             <img

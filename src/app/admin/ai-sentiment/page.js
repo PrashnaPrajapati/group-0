@@ -3,10 +3,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminSidebar from "@/components/AdminSidebar";
+import { getRole, getToken } from "@/lib/authStorage";
 
 export default function AiSentimentPage() {
   const router = useRouter();
-  const [feedbackData, setFeedbackData] = useState([]);
+  const [reviewData, setReviewData] = useState([]);
   const [filter, setFilter] = useState("all");
   const [sortBy] = useState("date");
   const [sortOrder] = useState("desc");
@@ -19,8 +20,8 @@ export default function AiSentimentPage() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const role = localStorage.getItem("role");
+    const token = getToken();
+    const role = getRole();
 
     if (!token || role !== "admin") {
       setError("Admin auth required. Please login again.");
@@ -29,7 +30,7 @@ export default function AiSentimentPage() {
       return;
     }
 
-    const fetchFeedback = async () => {
+    const fetchReview = async () => {
       setLoading(true);
       setError(null);
 
@@ -52,22 +53,22 @@ export default function AiSentimentPage() {
         }
 
         const payload = await res.json();
-        setFeedbackData(Array.isArray(payload.data) ? payload.data : []);
+        setReviewData(Array.isArray(payload.data) ? payload.data : []);
         setTotalPages(payload.meta?.totalPages || 1);
         setTotalCount(payload.meta?.total || 0);
       } catch (err) {
         console.error("Error loading AI sentiment details:", err);
-        setError(err.message || "Unable to load feedback sentiment data");
+        setError(err.message || "Unable to load review sentiment data");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchFeedback();
+    fetchReview();
   }, [page, limit, search, router]);
 
-  const filteredFeedback = useMemo(() => {
-    let filtered = filter === "all" ? feedbackData : feedbackData.filter((item) => item.sentiment === filter);
+  const filteredReview = useMemo(() => {
+    let filtered = filter === "all" ? reviewData : reviewData.filter((item) => item.sentiment === filter);
 
     const sorted = [...filtered].sort((a, b) => {
       if (sortBy === "score") {
@@ -83,12 +84,12 @@ export default function AiSentimentPage() {
     });
 
     return sorted;
-  }, [feedbackData, filter, sortBy, sortOrder]);
+  }, [reviewData, filter, sortBy, sortOrder]);
 
   const sentimentChartData = [
-    { sentiment: "positive", value: feedbackData.filter((l) => l.sentiment === "positive").length },
-    { sentiment: "neutral", value: feedbackData.filter((l) => l.sentiment === "neutral").length },
-    { sentiment: "negative", value: feedbackData.filter((l) => l.sentiment === "negative").length },
+    { sentiment: "positive", value: reviewData.filter((l) => l.sentiment === "positive").length },
+    { sentiment: "neutral", value: reviewData.filter((l) => l.sentiment === "neutral").length },
+    { sentiment: "negative", value: reviewData.filter((l) => l.sentiment === "negative").length },
   ];
 
   return (
@@ -103,25 +104,25 @@ export default function AiSentimentPage() {
 
           <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="bg-white shadow-lg rounded-xl p-4 text-center">
-              <p className="text-sm text-gray-500">Total Feedback</p>
+              <p className="text-sm text-gray-500">Total Reviews</p>
               <p className="text-2xl font-bold text-gray-800">{totalCount}</p>
             </div>
             <div className="bg-white shadow-lg rounded-xl p-4 text-center">
               <p className="text-sm text-gray-500">Positive %</p>
               <p className="text-2xl font-bold text-green-600">
-                {totalCount === 0 ? "0%" : `${Math.round((feedbackData.filter((item) => item.sentiment === "positive").length / (totalCount || 1)) * 100)}%`}
+                {totalCount === 0 ? "0%" : `${Math.round((reviewData.filter((item) => item.sentiment === "positive").length / (totalCount || 1)) * 100)}%`}
               </p>
             </div>
             <div className="bg-white shadow-lg rounded-xl p-4 text-center">
               <p className="text-sm text-gray-500">Neutral %</p>
               <p className="text-2xl font-bold text-gray-700">
-                {totalCount === 0 ? "0%" : `${Math.round((feedbackData.filter((item) => item.sentiment === "neutral").length / (totalCount || 1)) * 100)}%`}
+                {totalCount === 0 ? "0%" : `${Math.round((reviewData.filter((item) => item.sentiment === "neutral").length / (totalCount || 1)) * 100)}%`}
               </p>
             </div>
             <div className="bg-white shadow-lg rounded-xl p-4 text-center">
               <p className="text-sm text-gray-500">Negative %</p>
               <p className="text-2xl font-bold text-red-600">
-                {totalCount === 0 ? "0%" : `${Math.round((feedbackData.filter((item) => item.sentiment === "negative").length / (totalCount || 1)) * 100)}%`}
+                {totalCount === 0 ? "0%" : `${Math.round((reviewData.filter((item) => item.sentiment === "negative").length / (totalCount || 1)) * 100)}%`}
               </p>
             </div>
           </div>
@@ -146,7 +147,7 @@ export default function AiSentimentPage() {
             <div className="flex items-center gap-2">
               <input
                 type="text"
-                placeholder="Search customer or feedback"
+                placeholder="Search customer or review"
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
@@ -154,7 +155,7 @@ export default function AiSentimentPage() {
                 }}
                 className="px-3 py-2 border rounded-md w-60 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-300"
               />
-              <span className="text-sm text-gray-500">Total page entries: {feedbackData.length}</span>
+              <span className="text-sm text-gray-500">Total page entries: {reviewData.length}</span>
             </div>
 
             <div className="flex items-center gap-2">
@@ -185,7 +186,7 @@ export default function AiSentimentPage() {
                 <thead className="bg-pink-50 text-gray-700">
                   <tr>
                     <th className="p-3">Customer</th>
-                    <th className="p-3">Feedback</th>
+                  <th className="p-3">Review</th>
                     <th className="p-3">Rating</th>
                     <th className="p-3">Sentiment</th>
                     <th className="p-3">Score</th>
@@ -193,17 +194,17 @@ export default function AiSentimentPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredFeedback.length === 0 ? (
+                  {filteredReview.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="p-4 text-center text-gray-500">
-                        No matching feedback found.
+                        No matching review found.
                       </td>
                     </tr>
                   ) : (
-                    filteredFeedback.map((item) => (
+                    filteredReview.map((item) => (
                       <tr key={item.id} className="border-t border-gray-100">
                         <td className="p-3 font-medium text-gray-800">{item.customer || "Unknown"}</td>
-                        <td className="p-3 text-gray-700">{item.feedback}</td>
+                        <td className="p-3 text-gray-700">{item.review}</td>
                         <td className="p-3 text-gray-700">{item.rating || "-"}</td>
                         <td className="p-3 capitalize">
                           <span
@@ -225,7 +226,7 @@ export default function AiSentimentPage() {
               </table>
 
               <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm text-gray-600">
-                <div>Showing {filteredFeedback.length} / {totalCount}</div>
+                <div>Showing {filteredReview.length} / {totalCount}</div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setPage((prev) => Math.max(1, prev - 1))}

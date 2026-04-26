@@ -4,7 +4,7 @@ const jwt = require("jsonwebtoken");
 let onlineUsers = new Map(); 
 let onlineAdmins = new Map(); 
  
-const initializeChat = (io) => {
+const initializeChat = (io, notificationService = null) => {
   io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
  
@@ -87,10 +87,8 @@ const initializeChat = (io) => {
  
         let query = ``;
         let params = [];
-        
-        // If conversation is with system admin (999999), handle differently for admins
-        if (conversationUserId === 999999 && currentRole === "admin") {
-          // Admin viewing system admin: show ALL messages from any user to system admin
+
+        if (conversationUserId === 999999 && currentRole === "admin") { 
           query = `
             SELECT id, senderId, receiverId, message, isRead, timestamp
             FROM messages
@@ -99,8 +97,7 @@ const initializeChat = (io) => {
             LIMIT 100
           `;
           params = [];
-        } else if (currentRole === "admin") {
-          // Admin viewing a specific user: show messages between admin and that user, plus user to any admin
+        } else if (currentRole === "admin") { 
           query = `
             SELECT id, senderId, receiverId, message, isRead, timestamp
             FROM messages
@@ -110,8 +107,7 @@ const initializeChat = (io) => {
             LIMIT 100
           `;
           params = [conversationUserId, currentUserId, currentUserId, conversationUserId];
-        } else {
-          // Regular user: show messages between them and the admin/system admin
+        } else { 
           query = `
             SELECT id, senderId, receiverId, message, isRead, timestamp
             FROM messages
@@ -180,7 +176,7 @@ const initializeChat = (io) => {
         db.query(
           query,
           [senderId, receiverId, message.trim()],
-          (err, result) => {
+          async (err, result) => {
             if (err) {
               console.error("Error saving message:", err);
               return socket.emit("error", { message: "Failed to send message" });
@@ -211,7 +207,33 @@ const initializeChat = (io) => {
                 console.log("   ✉️  Sent to user", receiverId);
               }
             }
- 
+
+            try {
+              if (notificationService) {
+                const senderInfo = await getUserInfo(senderId);
+                const senderName = senderInfo?.fullName || (senderRole === "admin" ? "Admin" : "User");
+
+                if (senderRole === "users") {
+                  await notificationService.sendNotificationToAdmins(
+                    `New message from ${senderName}`,
+                    messageData.message_text,
+                    "chat_message",
+                    messageData.id
+                  );
+                } else {
+                  await notificationService.sendNotificationToUser(
+                    receiverId,
+                    `New message from Admin`,
+                    messageData.message_text,
+                    "chat_message",
+                    messageData.id
+                  );
+                }
+              }
+            } catch (notifyErr) {
+              console.error("Error creating chat notification:", notifyErr);
+            }
+
             socket.emit("message_sent", messageData);
           }
         );

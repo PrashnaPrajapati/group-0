@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import AdminSidebar from "../../../components/AdminSidebar";
+import { clearAuthSession, getToken } from "@/lib/authStorage";
 
 export default function AdminBookingsPage() {
   const [bookings, setBookings] = useState([]);
@@ -14,7 +15,7 @@ export default function AdminBookingsPage() {
  
   useEffect(() => {
     setMounted(true);
-    const t = localStorage.getItem("token");
+    const t = getToken();
     setToken(t);
 
     if (!t) {
@@ -52,7 +53,7 @@ const handlePrevPage = () => {
       .then((res) => {
         if (res.status === 401) { 
           alert("Session expired. Please log in again.");
-          localStorage.removeItem("token"); 
+          clearAuthSession();
           window.location.href = "/login"; 
           return;
         }
