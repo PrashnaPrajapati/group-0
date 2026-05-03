@@ -1,5 +1,6 @@
-"use client";
+﻿"use client";
 
+import { apiUrl } from "@/lib/apiConfig";
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ToastContainer, toast } from "react-toastify";
@@ -31,7 +32,7 @@ export default function EditServicePage() {
   useEffect(() => {
     const fetchService = async () => {
       try {
-        const res = await fetch(`http://localhost:5001/admin/services`, {
+        const res = await fetch(apiUrl(`/admin/services`), {
           headers: {
             Authorization: "Bearer " + getToken(),
           },
@@ -56,7 +57,7 @@ export default function EditServicePage() {
         });
 
         if (service.image) {
-          setImagePreview(`http://localhost:5001${service.image}`);
+          setImagePreview(apiUrl(`${service.image}`));
         }
 
         setLoading(false);
@@ -98,7 +99,7 @@ export default function EditServicePage() {
 
       if (image) formData.append("image", image);
 
-      const res = await fetch(`http://localhost:5001/admin/services/${id}`, {
+      const res = await fetch(apiUrl(`/admin/services/${id}`), {
         method: "PUT",
         headers: {
           Authorization: "Bearer " + getToken(),

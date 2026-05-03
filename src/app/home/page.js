@@ -1,33 +1,59 @@
-'use client';
+﻿'use client';
 
+import { apiUrl } from "@/lib/apiConfig";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Button from "@/components/Button";
 import Logo from "@/components/Logo";
 import Footer from "@/components/Footer";
 import Image from "next/image";
-import { getToken } from "@/lib/authStorage";
+import { toast } from "react-toastify";
+import { clearAuthSession, getValidToken } from "@/lib/authStorage";
+import {
+  ArrowRight,
+  CalendarCheck,
+  ChevronLeft,
+  ChevronRight,
+  MapPin,
+  Scissors,
+  Sparkles,
+} from "lucide-react";
+
+const DEFAULT_SERVICE_IMAGE = "/beauty.webp";
 
 export default function HomePage() {
+  const router = useRouter();
   const [services, setServices] = useState([]);
   const [page, setPage] = useState(0);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loadingServices, setLoadingServices] = useState(true);
   const itemsPerPage = 4; 
 
   useEffect(() => {
-    const token = getToken();
+    const token = getValidToken();
     setIsLoggedIn(Boolean(token));
   }, []);
 
   useEffect(() => {
     async function fetchServices() {
+      setLoadingServices(true);
       try {
-        const res = await fetch("http://localhost:5001/services", { cache: "no-store" });
+        const res = await fetch(apiUrl("/services"), { cache: "no-store" });
         if (!res.ok) return setServices([]);
         const data = await res.json();
-        setServices(data.map(s => ({ ...s, image: `http://localhost:5001${s.image}` })));
+        setServices(
+          data.map((service) => ({
+            ...service,
+            image: service.image
+              ? apiUrl(`${service.image}`)
+              : DEFAULT_SERVICE_IMAGE,
+          }))
+        );
       } catch {
         setServices([]);
+      } finally {
+        setLoadingServices(false);
       }
     }
     fetchServices();
@@ -43,18 +69,18 @@ export default function HomePage() {
 
   const steps = [
     { 
-      icon: "💄", 
+      icon: Sparkles,
       title: "Choose Service", 
       desc: "Browse and select your desired beauty service" 
     },
     { 
-      icon: "📆", 
+      icon: CalendarCheck,
       title: "Pick Location & Time", 
       desc: "Choose between home service or salon visit and select your preferred time" 
 
     },
     { 
-      icon: "✨", 
+      icon: Scissors,
       title: "Relax & Enjoy", 
       desc: "Our experts take care of everything" 
 
@@ -62,143 +88,285 @@ export default function HomePage() {
   ];
 
   const visibleServices = services.slice(page * itemsPerPage, (page + 1) * itemsPerPage);
-  const bookNowHref = isLoggedIn ? "/services" : "/signup";
+  const exploreServicesHref = "/services";
+  const getStartedHref = isLoggedIn ? "/services" : "/signup";
+
+  const handleLogout = () => {
+    toast(
+      ({ closeToast }) => (
+        <div className="flex flex-col gap-3">
+          <p>Are you sure you want to logout?</p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                clearAuthSession();
+                setIsLoggedIn(false);
+                router.push("/login");
+                closeToast();
+              }}
+              className="bg-pink-500 text-white px-4 py-2 rounded hover:bg-pink-400"
+            >
+              Yes, Logout
+            </button>
+            <button
+              type="button"
+              onClick={closeToast}
+              className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ),
+      {
+        autoClose: false,
+        closeButton: false,
+        closeOnClick: false,
+      }
+    );
+  };
 
   return (
-    <div className="bg-[#fff7fa] text-gray-800">
+    <div className="bg-[#fffaf7] text-gray-900">
 
-      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur shadow-sm">
+      <header className="sticky top-0 z-50 border-b border-rose-100/70 bg-white/90 backdrop-blur">
 
-        <div className="max-w-7xl mx-auto px-6 py-1 flex justify-between items-center"> 
-          <Link href="/" className="scale-75 origin-left">
+        <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 flex justify-between items-center"> 
+          <Link href="/home" className="scale-75 origin-left">
             <Logo />
           </Link>
 
-          <nav className="flex items-center gap-6 text-sm">
-            <Link href="/login" className="hover:text-pink-500 font-bold">
-              Login
-            </Link>
-            <Link href="/signup">
-              <Button className="py-2 text-sm">Sign Up</Button>
-            </Link>
+          <nav className="flex items-center gap-3 sm:gap-6 text-sm">
+            {isLoggedIn ? (
+              <>
+                <Link href="/services" className="font-semibold text-gray-700 hover:text-rose-600">
+                  Services
+                </Link>
+                <Link href="/packages" className="font-semibold text-gray-700 hover:text-rose-600">
+                  Packages
+                </Link>
+                <Link href="/profile" className="hidden sm:inline font-semibold text-gray-700 hover:text-rose-600">
+                  Profile
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="font-semibold text-gray-700 hover:text-rose-600"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <Link href="/login" className="font-semibold text-gray-700 hover:text-rose-600">
+                  Login
+                </Link>
+                <Link href="/signup">
+                  <Button className="py-2 text-sm shadow-sm">Sign Up</Button>
+                </Link>
+              </>
+            )}
           </nav>
         </div>
       </header>
 
-      <section className="text-center py-20 px-6">
-        <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent drop-shadow-md">
-          Discover Your Inner Glow
-        </h1> 
-        
-        <p className="max-w-2xl mx-auto text-gray-600 mb-8">
-          Professional beauty services at your doorstep or salons. 
-          Choose from makeup, hair, massage, nails and more.
-        </p>
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0">
+          <Image
+            src="/spa.png"
+            alt="Beauty and wellness service"
+            fill
+            priority
+            className="object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-white via-white/88 to-white/20" />
+          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#fffaf7] to-transparent" />
+        </div>
 
-        <Link href={bookNowHref}> 
-          <Button>Explore Services</Button>
-        </Link>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 min-h-[560px] flex items-center">
+          <div className="max-w-2xl py-20">
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-rose-200 bg-white/80 px-4 py-2 text-sm font-semibold text-rose-700 shadow-sm">
+              <MapPin size={16} />
+              Salon visits and doorstep beauty care
+            </div>
+
+            <h1 className="text-4xl md:text-6xl font-bold leading-tight text-gray-950">
+              Beauty services that fit your day.
+            </h1> 
+            
+            <p className="mt-5 max-w-xl text-lg leading-8 text-gray-700">
+              Book trusted makeup, hair, spa, massage, and nail services from Singar Glow in just a few clicks.
+            </p>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <Link href={exploreServicesHref}> 
+                <Button className="inline-flex items-center gap-2 px-6 py-3 text-base shadow-lg shadow-rose-200/70">
+                  Explore Services
+                  <ArrowRight size={18} />
+                </Button>
+              </Link>
+              <Link
+                href="/packages"
+                className="inline-flex items-center justify-center rounded-lg border border-rose-200 bg-white/80 px-6 py-3 font-semibold text-gray-800 shadow-sm transition hover:border-rose-300 hover:text-rose-700"
+              >
+                View Packages
+              </Link>
+            </div>
+
+            <div className="mt-10 grid max-w-lg grid-cols-3 divide-x divide-rose-200 rounded-lg border border-rose-100 bg-white/80 p-4 shadow-sm backdrop-blur">
+              <div className="px-3">
+                <p className="text-xl font-bold text-gray-950">30+</p>
+                <p className="text-xs font-medium text-gray-500">Services</p>
+              </div>
+              <div className="px-3">
+                <p className="text-xl font-bold text-gray-950">Home</p>
+                <p className="text-xs font-medium text-gray-500">Or salon</p>
+              </div>
+              <div className="px-3">
+                <p className="text-xl font-bold text-gray-950">Easy</p>
+                <p className="text-xs font-medium text-gray-500">Booking</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section className="bg-white">
-        <div className="max-w-7xl mx-auto px-6 py-16 text-center">
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent inline-block mb-2">
-            Our Featured Services
-          </h2>
-          <p className="text-gray-600 mb-10">
-            Explore our wide range of beauty & wellness services
-          </p>
+        <div className="max-w-7xl mx-auto px-4 py-16 sm:px-6">
+          <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="mb-2 text-sm font-bold uppercase tracking-wider text-rose-600">
+                Featured Services
+              </p>
+              <h2 className="text-3xl font-bold text-gray-950">
+                Choose your glow-up
+              </h2>
+              <p className="mt-2 max-w-2xl text-gray-600">
+                Browse popular beauty and wellness services available for booking.
+              </p>
+            </div>
 
-          <div className="flex justify-center gap-6 overflow-x-auto py-4">
-            {visibleServices.length > 0 ? 
+            <Link href="/services" className="inline-flex items-center gap-2 font-semibold text-rose-700 hover:text-rose-800">
+              See all services
+              <ArrowRight size={17} />
+            </Link>
+          </div>
+
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {loadingServices ? (
+              <p className="col-span-full text-center text-gray-500">Loading services...</p>
+            ) : visibleServices.length > 0 ? (
             visibleServices.map((service, i) => (
-              <div 
+              <Link
+                href={`/services/details/${service.id}`}
                 key={service.id || i} 
-                className="min-w-[250px] max-w-[250px] bg-white rounded-2xl shadow-xl hover:shadow-[0_6px_10px_-2px_rgba(236,72,153,0.5),0_4px_6px_-1px_rgba(236,72,153,0.08)] overflow-hidden transition"
+                className="group overflow-hidden rounded-lg border border-gray-100 bg-white shadow-sm transition hover:-translate-y-1 hover:border-rose-200 hover:shadow-xl"
               >
-                <div className="aspect-square w-full relative">
+                <div className="aspect-[4/3] w-full relative overflow-hidden bg-rose-50">
                   <Image 
                   src={service.image} 
                   alt={service.name} 
                   fill 
-                  className="object-cover" 
+                  className="object-cover transition duration-500 group-hover:scale-105" 
                   />
                 </div>
 
-                <div className="p-6 text-center">
-                  <h3 className="font-semibold text-lg mb-2">
+                <div className="p-5">
+                  <h3 className="font-semibold text-lg text-gray-950">
                     {service.name}
                   </h3>
-                  <p className="text-sm text-gray-500 mb-4">
+                  <p className="mt-2 line-clamp-3 min-h-[60px] text-sm leading-5 text-gray-500">
                     {service.description}
                   </p>
+                  <span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-rose-600 group-hover:text-rose-800">
+                    View Details
+                    <ArrowRight size={16} />
+                  </span>
                    
                 </div>
-              </div>
-            )) : 
-            <p className="text-gray-500">No services available</p>
-            }
+              </Link>
+            ))
+            ) : (
+              <p className="col-span-full text-center text-gray-500">No services available</p>
+            )}
           </div>
 
           <div className="flex justify-center gap-4 mt-6">
             <button 
               onClick={handleBack} 
               disabled={page === 0} 
-              className="bg-gray-200 text-gray-800 hover:bg-gray-300 px-4 py-2 rounded-lg font-medium disabled:opacity-50"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Previous services"
             >
-              Back
+              <ChevronLeft size={18} />
             </button>
             <button 
               onClick={handleNext} 
               disabled={(page + 1) * itemsPerPage >= services.length} 
-              className="bg-purple-500 text-white hover:bg-purple-700 px-4 py-2 rounded-lg font-medium disabled:opacity-50"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-gray-950 text-white shadow-sm hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Next services"
             >
-              See More
+              <ChevronRight size={18} />
             </button>
           </div>
         </div>
       </section>
 
-      <section className="bg-[#fff7fa] py-16">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent mb-2">
-            How It Works
-          </h2>
-          <p className="text-gray-600 mb-10">
-            Book your beauty service in just 3 simple steps
-          </p>
+      <section className="bg-[#fffaf7] py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="mx-auto mb-10 max-w-2xl text-center">
+            <p className="mb-2 text-sm font-bold uppercase tracking-wider text-rose-600">
+              How It Works
+            </p>
+            <h2 className="text-3xl font-bold text-gray-950">
+              From browse to booked
+            </h2>
+            <p className="mt-2 text-gray-600">
+              Book your beauty service in three simple steps.
+            </p>
+          </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {steps.map((step, i) => (
-              <div key={i} className="bg-white rounded-xl shadow-lg p-6">
-                  <div className="text-4xl mb-4">{step.icon}</div>
-                <h3 className="font-semibold mb-2">
-                  {i + 1}. {step.title}
-                </h3>
-                <p className="text-sm text-gray-600">
-                  {step.desc}
-                </p>
-              </div>
-            ))}
+            {steps.map((step, i) => {
+              const StepIcon = step.icon;
+
+              return (
+                <div key={i} className="rounded-lg border border-rose-100 bg-white p-6 shadow-sm">
+                  <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
+                    <StepIcon size={24} />
+                  </div>
+                  <h3 className="font-semibold text-gray-950 mb-2">
+                    {i + 1}. {step.title}
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    {step.desc}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      <section className="bg-white py-16">
-        <div className="max-w-4xl mx-auto px-6">
-          <div className="bg-[#fff7fa] rounded-3xl shadow-xl p-10 text-center">
-
-            <h2 className="text-2xl md:text-3xl font-bold mb-4 bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
-              Ready to Glow?
-            </h2>
-
-            <p className="text-gray-600 mb-6"> 
-              Book your first service today and experience beauty like never before
+      <section className="bg-gray-950 py-16 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="mb-2 text-sm font-bold uppercase tracking-wider text-rose-300">
+                Ready to Glow?
               </p>
+              <h2 className="text-3xl font-bold">
+                Your next beauty appointment starts here.
+              </h2>
+              <p className="mt-3 max-w-2xl text-gray-300"> 
+                Book your first service today and get a salon-ready experience at your preferred location.
+              </p>
+            </div>
             
-            <Link href={bookNowHref}>
-              <Button>Get Started Now</Button>
-              </Link>
+            <Link href={getStartedHref}>
+              <Button className="whitespace-nowrap px-6 py-3">Get Started Now</Button>
+            </Link>
           </div>
         </div>
       </section>

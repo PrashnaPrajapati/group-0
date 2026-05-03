@@ -70,6 +70,31 @@ class NotificationService {
     });
   }
 
+  async markChatNotificationsAsRead(userId, conversationUserId, userRole) {
+    try {
+      const result = await NotificationManager.markChatNotificationsAsRead(
+        userId,
+        conversationUserId,
+        userRole
+      );
+      const unreadCount = await NotificationManager.getUnreadCount(userId);
+
+      if (result.notificationIds.length > 0) {
+        this.io.to(`user_${userId}`).emit("chat_notifications_read", {
+          notificationIds: result.notificationIds,
+          unreadCount,
+        });
+      } else {
+        this.io.to(`user_${userId}`).emit("notification_count_updated", { unreadCount });
+      }
+
+      return result;
+    } catch (error) {
+      console.error("Error marking chat notifications as read:", error);
+      return { affectedRows: 0, notificationIds: [] };
+    }
+  }
+
   // Send notification to specific user
   async sendNotificationToUser(userId, title, message, type, relatedId = null) {
     try {
@@ -237,7 +262,7 @@ class NotificationService {
           b.user_id,
           b.booking_date,
           b.booking_time,
-          s.name AS service_name,
+          COALESCE(s.name, b.custom_service_names) AS service_name,
           p.name AS package_name
         FROM bookings b
         LEFT JOIN services s ON b.service_id = s.id

@@ -1,5 +1,6 @@
-"use client";
+﻿"use client";
 
+import { apiUrl } from "@/lib/apiConfig";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminSidebar from "@/components/AdminSidebar";
@@ -71,7 +72,7 @@ export default function AdminDashboard() {
  
     const fetchDashboard = async () => {
       try {
-        const res = await fetch("http://localhost:5001/admin/stats", {
+        const res = await fetch(apiUrl("/admin/stats"), {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
@@ -86,9 +87,9 @@ export default function AdminDashboard() {
 
     const fetchCharts = async () => {
       const [monthly, category, sentiment] = await Promise.all([
-        safeFetch("http://localhost:5001/admin/monthly-stats", token),
-        safeFetch("http://localhost:5001/admin/service-categories", token),
-        safeFetch("http://localhost:5001/admin/ai-sentiment", token),
+        safeFetch(apiUrl("/admin/monthly-stats"), token),
+        safeFetch(apiUrl("/admin/service-categories"), token),
+        safeFetch(apiUrl("/admin/ai-sentiment"), token),
       ]);
 
       console.log("admin monthly stats", monthly);
@@ -105,10 +106,10 @@ export default function AdminDashboard() {
 
     const fetchTabData = async () => {
       const [services, packages, bookings, review] = await Promise.all([
-        safeFetch("http://localhost:5001/services", token),
-        safeFetch("http://localhost:5001/packages", token),
-        safeFetch("http://localhost:5001/admin/bookings", token),
-        safeFetch("http://localhost:5001/review", token),
+        safeFetch(apiUrl("/services"), token),
+        safeFetch(apiUrl("/packages"), token),
+        safeFetch(apiUrl("/admin/bookings"), token),
+        safeFetch(apiUrl("/review"), token),
         
       ]);
  
@@ -336,7 +337,7 @@ function TabContent({ title, items, type }) {
                         const updatedBookings = [...items];
                         updatedBookings[index] = {...item, status: newStatus};
                         items = updatedBookings; 
-                        fetch(`http://localhost:5001/admin/bookings/${item.id}/status`, {
+                        fetch(apiUrl(`/admin/bookings/${item.id}/status`), {
                           method: "PUT",
                           headers: {
                             "Content-Type": "application/json",

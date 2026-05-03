@@ -1,5 +1,6 @@
-"use client";
+﻿"use client";
 
+import { apiUrl } from "@/lib/apiConfig";
 import Link from "next/link";
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -7,14 +8,15 @@ import Logo from "@/components/Logo";
 import TextInput from "@/components/TextInput";
 import PasswordInput from "@/components/PasswordInput";
 import Button from "@/components/Button";
-import GoogleButton from "@/components/GoogleButton";
-import { setAuthSession } from "@/lib/authStorage";
+import GoogleButton from "@/components/GoogleButton"; 
 import { User, Phone, Mail } from "lucide-react";
 import { toast } from "react-toastify";
 import { notify } from "@/lib/notify";
+import { useTranslation } from "react-i18next";
 
 export default function SignupPage() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const fullNameRef = useRef(null);
   const phoneRef = useRef(null);
@@ -37,10 +39,10 @@ export default function SignupPage() {
     const trimmed = fullName.trim();
     const regex = /^[A-Za-z]+([ '-][A-Za-z]+)+$/;
     if (!trimmed) {
-      setErrors(prev => ({ ...prev, fullName: "Full name is required." }));
+      setErrors(prev => ({ ...prev, fullName: t("error.fullNameRequired") }));
       return false;
     } else if (!regex.test(trimmed)) {
-      setErrors(prev => ({ ...prev, fullName: "Enter at least 2 words, letters only." }));
+      setErrors(prev => ({ ...prev, fullName: t("error.fullNameInvalid") }));
       return false;
     }
     setErrors(prev => ({ ...prev, fullName: "" }));
@@ -51,12 +53,12 @@ export default function SignupPage() {
     const trimmed = phone.replace(/\s+/g, ""); 
 
     if (!trimmed) {
-      setErrors(prev => ({ ...prev, phone: "Phone number is required." }));
+      setErrors(prev => ({ ...prev, phone: t("error.phoneRequired") }));
       return false;
     } 
 
     if (!/^\d{10}$/.test(trimmed)) {
-      setErrors(prev => ({ ...prev, phone: "Phone number must be exactly 10 digits." }));
+      setErrors(prev => ({ ...prev, phone: t("error.phoneInvalid") }));
       return false;
     }
 
@@ -83,7 +85,7 @@ export default function SignupPage() {
   );
  
   if (!trimmed) {
-    setErrors(prev => ({ ...prev, email: "Email is required." }));
+    setErrors(prev => ({ ...prev, email: t("error.emailRequired") }));
     emailRef.current?.focus();
     return false;
   }
@@ -91,7 +93,7 @@ export default function SignupPage() {
   if (!regex.test(trimmed)) {
     setErrors(prev => ({
       ...prev,
-      email: "Please enter a valid email address"
+      email: t("error.emailInvalid")
     }));
     emailRef.current?.focus();
     return false;
@@ -105,10 +107,10 @@ export default function SignupPage() {
     const trimmed = password.trim();
     const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
     if (!trimmed) {
-      setErrors(prev => ({ ...prev, password: "Password is required." }));
+      setErrors(prev => ({ ...prev, password: t("error.passwordRequired") }));
       return false;
     } else if (!regex.test(trimmed)) {
-      setErrors(prev => ({ ...prev, password: "Password must be 8+ characters and include uppercase, lowercase, and a number." }));
+      setErrors(prev => ({ ...prev, password: t("error.passwordWeak") }));
       return false;
     }
     setErrors(prev => ({ ...prev, password: "" }));
@@ -120,10 +122,10 @@ export default function SignupPage() {
   const trimmedConfirm = confirmPassword.trim();
 
   if (!trimmedConfirm) {
-    setErrors(prev => ({ ...prev, confirmPassword: "Please confirm your password." }));
+    setErrors(prev => ({ ...prev, confirmPassword: t("error.confirmPasswordRequired") }));
     return false;
   } else if (trimmedConfirm !== trimmedPassword) {
-    setErrors(prev => ({ ...prev, confirmPassword: "Passwords do not match." }));
+    setErrors(prev => ({ ...prev, confirmPassword: t("error.passwordsDoNotMatch") }));
     return false;
   }
 
@@ -132,10 +134,10 @@ export default function SignupPage() {
 }; 
   const validateGender = () => {
     if (!gender) {
-      setErrors(prev => ({ ...prev, gender: "Please select a gender." }));
+      setErrors(prev => ({ ...prev, gender: t("error.genderRequired") }));
       return false;
     } else if (gender === "other" && !otherGender.trim()) {
-      setErrors(prev => ({ ...prev, otherGender: "Please specify your gender." }));
+      setErrors(prev => ({ ...prev, otherGender: t("error.otherGenderRequired") }));
       return false;
     }
     setErrors(prev => ({ ...prev, gender: "", otherGender: "" }));
@@ -152,7 +154,7 @@ export default function SignupPage() {
 
     setLoading(true);
 
-    const creatingToastId = toast.info("Creating Account...", {
+    const creatingToastId = toast.info(t("auth.creatingAccount"), {
       position: "top-center",
       autoClose: false,
       hideProgressBar: false,
@@ -166,7 +168,7 @@ export default function SignupPage() {
     const finalGender = gender === "other" ? otherGender.trim() : gender;
 
     try {
-      const res = await fetch("http://localhost:5001/signup", {
+      const res = await fetch(apiUrl("/signup"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -182,13 +184,13 @@ export default function SignupPage() {
 
       if (!res.ok) {
         toast.dismiss(creatingToastId);
-        notify.error(data.message || "Signup failed");
+        notify.error(data.message || t("error.signupFailed"));
         setLoading(false);
         return;
       } 
      
       toast.update(creatingToastId, {
-        render: "Account Created! Signing you in...",
+        render: data.message || t("auth.accountCreated"),
         type: "success", 
         hideProgressBar: false,
         closeOnClick: true,
@@ -196,33 +198,12 @@ export default function SignupPage() {
         draggable: true,
       });
 
-      try {
-        const loginRes = await fetch("http://localhost:5001/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: email.trim(),
-            password: password.trim(),
-            rememberMe: false,
-          }),
-        });
-
-        const loginData = await loginRes.json();
-        if (!loginRes.ok || !loginData?.token) {
-          router.push("/login");
-          return;
-        }
-
-        setAuthSession(loginData.token, loginData.user?.role, false);
-        router.push("/services");
-      } catch {
-        router.push("/login");
-      }
+      router.push("/login");
 
     } catch (err) {
       console.error(err);
       toast.dismiss(creatingToastId);
-      notify.error("Something went wrong. Please try again.");
+      notify.error(t("error.genericTryAgain"));
     } finally {
       setLoading(false);
     }
@@ -233,7 +214,8 @@ export default function SignupPage() {
       <div className="hidden md:block w-1/2">
         <img
           src="/signup.png"
-          
+          alt=""
+          aria-hidden="true"
           className="w-full h-full object-cover brightness-90"
         />
       </div> 
@@ -241,18 +223,18 @@ export default function SignupPage() {
         <div className="w-full max-w-md">
           <Logo />
           <h2 className="text-2xl font-bold text-center text-gray-800 mb-2">
-            Create Account
+            {t("auth.createAccountTitle")}
           </h2>
           <p className="text-center text-gray-500 mt-1 mb-6">
-            Join us and start your beauty journey
+            {t("auth.createAccountSubtitle")}
           </p>
 
           <form className="space-y-5" onSubmit={handleSignup}>
  
             <TextInput
               ref={fullNameRef}
-              placeholder="Enter your full name"
-              label="Full Name"
+              placeholder={t("auth.fullNamePlaceholder")}
+              label={t("auth.fullName")}
               icon={User}
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
@@ -268,8 +250,8 @@ export default function SignupPage() {
  
             <TextInput
             ref={phoneRef}
-            placeholder="Enter your phone number"
-            label="Phone Number"
+            placeholder={t("auth.phonePlaceholder")}
+            label={t("auth.phoneNumber")}
             icon={Phone}
             type="tel"
             inputMode="numeric"
@@ -291,8 +273,8 @@ export default function SignupPage() {
  
             <TextInput
               ref={emailRef}
-              placeholder="Enter your email"
-              label="Email Address"
+              placeholder={t("auth.emailPlaceholder")}
+              label={t("auth.emailAddress")}
               type="email"
               icon={Mail}
               value={email}
@@ -309,8 +291,8 @@ export default function SignupPage() {
  
             <PasswordInput
               ref={passwordRef}
-              placeholder="Create a password"
-              label="Password"
+              placeholder={t("auth.createPasswordPlaceholder")}
+              label={t("auth.password")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={(e) => {
@@ -328,8 +310,8 @@ export default function SignupPage() {
  
             <PasswordInput
               ref={confirmPasswordRef}
-              placeholder="Confirm your password"
-              label="Confirm Password"
+              placeholder={t("auth.confirmPasswordPlaceholder")}
+              label={t("auth.confirmPassword")}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               onKeyDown={(e) => {
@@ -345,47 +327,51 @@ export default function SignupPage() {
               disabled={loading}
             />
  
-            <div>
-              <label className="text-sm font-medium text-gray-700">Gender</label>
+            <fieldset>
+              <legend className="text-sm font-medium text-gray-700">{t("auth.gender")}</legend>
               <div className="flex items-center gap-5 mt-2">
-                {["female", "male", "other"].map((g) => (
-                  <label key={g} className="flex items-center gap-2 text-gray-700">
+                {[
+                  { value: "female", label: t("auth.genderFemale") },
+                  { value: "male", label: t("auth.genderMale") },
+                  { value: "other", label: t("auth.genderOther") },
+                ].map((g) => (
+                  <label key={g.value} className="flex items-center gap-2 text-gray-700">
                     <input
                       type="radio"
                       name="gender"
-                      value={g}
+                      value={g.value}
                       className="accent-pink-500"
-                      checked={gender === g}
+                      checked={gender === g.value}
                       onChange={(e) => setGender(e.target.value)}
                       disabled={loading}
                     />
-                    {g.charAt(0).toUpperCase() + g.slice(1)}
+                    {g.label}
                   </label>
                 ))}
               </div>
-              {errors.gender && <p className="text-red-500 text-sm mt-1">{errors.gender}</p>}
+              {errors.gender && <p className="text-red-500 text-sm mt-1" role="alert">{errors.gender}</p>}
 
               {gender === "other" && (
                 <TextInput
                   ref={otherGenderRef}
-                  placeholder="Please specify"
-                  label="Specify Gender"
+                  placeholder={t("auth.specifyGenderPlaceholder")}
+                  label={t("auth.specifyGender")}
                   value={otherGender}
                   onChange={(e) => setOtherGender(e.target.value)}
                   error={errors.otherGender}
                   disabled={loading}
                 />
               )}
-            </div>
+            </fieldset>
 
             <Button type="submit" fullWidth disabled={loading}>
-              {loading ? "Creating Account..." : "Create Account"}
+              {loading ? t("auth.creatingAccount") : t("auth.createAccount")}
             </Button>
 
             <div className="flex items-center my-2">
               <hr className="flex-grow border-gray-300" />
               <span className="mx-3 text-gray-500 text-sm">
-                Or continue with
+                {t("auth.orContinueWith")}
               </span>
               <hr className="flex-grow border-gray-300" />
             </div>
@@ -393,9 +379,9 @@ export default function SignupPage() {
             <GoogleButton />
 
             <div className="text-center text-sm mt-4 text-gray-500">
-            Already have an account?{" "}
+            {t("auth.haveAccount")}{" "}
             <Link href="/login" className="text-pink-500 font-semibold ml-1">
-              Login
+              {t("auth.login")}
             </Link>
           </div> 
           </form>

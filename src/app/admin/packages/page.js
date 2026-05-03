@@ -1,5 +1,6 @@
-"use client";
+﻿"use client";
 
+import { apiUrl } from "@/lib/apiConfig";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminSidebar from "@/components/AdminSidebar";
@@ -18,7 +19,7 @@ export default function AdminPackagesPage() {
 
   const fetchPackages = async () => {
     try {
-      const res = await fetch("http://localhost:5001/admin/packages", {
+      const res = await fetch(apiUrl("/admin/packages"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -84,7 +85,7 @@ export default function AdminPackagesPage() {
       async () => {
         try {
           const res = await fetch(
-            `http://localhost:5001/packages/${pkg.id}/${action}`,
+            apiUrl(`/packages/${pkg.id}/${action}`),
             {
               method: "PUT",
               headers: { Authorization: `Bearer ${token}` },
@@ -121,7 +122,7 @@ export default function AdminPackagesPage() {
             onClick={() => router.back()}
             className="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
           >
-            ← Back
+            â† Back
           </button>
 
           <div className="text-center mb-6">

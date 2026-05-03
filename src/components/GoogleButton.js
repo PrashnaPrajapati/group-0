@@ -1,12 +1,15 @@
- "use client";
+﻿"use client";
 
+import { apiUrl } from "@/lib/apiConfig";
 import { useState } from "react";
 import { FcGoogle } from "react-icons/fc";
 import { signIn, getSession } from "next-auth/react";
 import { setAuthSession } from "@/lib/authStorage";
+import { useTranslation } from "react-i18next";
 
 export default function GoogleButton() {
   const [loading, setLoading] = useState(false);
+  const { t } = useTranslation();
 
   const waitForSession = async () => {
     const maxAttempts = 10;
@@ -33,7 +36,7 @@ export default function GoogleButton() {
         throw new Error("Google session not found");
       }
 
-      const res = await fetch("http://localhost:5001/google-login", {
+      const res = await fetch(apiUrl("/google-login"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -52,7 +55,7 @@ export default function GoogleButton() {
       window.location.assign("/services");
     } catch (error) {
       console.error(error);
-      alert("Google login failed");
+      alert(t("auth.googleLoginFailed"));
     } finally {
       setLoading(false);
     }
@@ -65,8 +68,8 @@ export default function GoogleButton() {
       className="w-full border p-3 rounded-lg flex items-center justify-center gap-2 
         hover:bg-gray-100 transition text-gray-800 font-medium disabled:opacity-70 disabled:cursor-not-allowed"
     >
-      <FcGoogle size={20} />
-      {loading ? "Signing in..." : "Continue with Google"}
+      <FcGoogle size={20} aria-hidden="true" />
+      {loading ? t("auth.googleSigningIn") : t("auth.googleContinue")}
     </button>
   );
 } 

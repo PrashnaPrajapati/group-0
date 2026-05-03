@@ -1,21 +1,23 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect, useMemo } from "react";
+import { getEsewaPaymentUrl, normalizeEsewaAmount } from "@/lib/esewa";
 import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 
-export default function PaymentsPage() {
+function PaymentsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
  
   const bookingIdsParam = searchParams.get("bookingIds");
   const totalPrice = searchParams.get("totalPrice");
 
-  const bookingIds = bookingIdsParam
-    ? bookingIdsParam.split(",").map((id) => Number(id))
-    : [];
+  const bookingIds = useMemo(
+    () => (bookingIdsParam ? bookingIdsParam.split(",").map((id) => Number(id)) : []),
+    [bookingIdsParam]
+  );
 
   const [paymentStatus, setPaymentStatus] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -42,16 +44,21 @@ export default function PaymentsPage() {
     setLoading(true);
     setPaymentStatus(null);
 
+    const paymentAmount = normalizeEsewaAmount(totalPrice);
     const transactionUuid = `TXN${Date.now()}`;
-    const successUrl = `${window.location.origin}/payments/esewa-callback?bookingIds=${bookingIds.join(",")}&txnId=${transactionUuid}`;
-    const failUrl = `${window.location.origin}/payments/payment-failed?bookingIds=${bookingIds.join(",")}`;
+    const successUrl = `${window.location.origin}/payments/esewa-callback`;
+    const failUrl = `${window.location.origin}/payments/payment-failed?bookingIds=${bookingIds.join(",")}&totalPrice=${paymentAmount}`;
  
     try {
+      if (!paymentAmount) {
+        throw new Error("Invalid eSewa payment amount");
+      }
+
       const signatureResponse = await fetch("/api/payments/esewa-signature", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: totalPrice,
+          amount: paymentAmount,
           transactionUUID: transactionUuid,
           productCode: process.env.NEXT_PUBLIC_ESEWA_MERCHANT_CODE || "EPAYTEST",
         }),
@@ -68,17 +75,17 @@ export default function PaymentsPage() {
         JSON.stringify({
           txnId: transactionUuid,
           bookingIds,
-          amount: totalPrice,
+          amount: paymentAmount,
           email: userEmail,
         })
       );
  
       const esewaData = {
-        amount: totalPrice,
+        amount: paymentAmount,
         tax_amount: 0,
         product_service_charge: 0,
         product_delivery_charge: 0,
-        total_amount: totalPrice,
+        total_amount: paymentAmount,
         transaction_uuid: transactionUuid,
         product_code: process.env.NEXT_PUBLIC_ESEWA_MERCHANT_CODE || "EPAYTEST",
         success_url: successUrl,
@@ -89,7 +96,7 @@ export default function PaymentsPage() {
 
       const form = document.createElement("form");
       form.method = "POST";
-      form.action = "https://rc-epay.esewa.com.np/api/epay/main/v2/form";
+      form.action = getEsewaPaymentUrl();
 
       Object.entries(esewaData).forEach(([name, value]) => {
         const input = document.createElement("input");
@@ -164,5 +171,13 @@ export default function PaymentsPage() {
       </div>
     </div>
     </div>
+  );
+}
+
+export default function PaymentsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50" />}>
+      <PaymentsContent />
+    </Suspense>
   );
 }

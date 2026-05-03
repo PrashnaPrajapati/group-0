@@ -1,10 +1,12 @@
 import crypto from "crypto";
+import { normalizeEsewaAmount } from "@/lib/esewa";
 
 export async function POST(request) {
   try {
     const { amount, transactionUUID, productCode } = await request.json();
+    const totalAmount = normalizeEsewaAmount(amount);
  
-    if (!amount || !transactionUUID || !productCode) {
+    if (!totalAmount || !transactionUUID || !productCode) {
       return Response.json(
         { error: "Missing required parameters: amount, transactionUUID, productCode" },
         { status: 400 }
@@ -20,7 +22,7 @@ export async function POST(request) {
       );
     }
 
-    const message = `total_amount=${amount},transaction_uuid=${transactionUUID},product_code=${productCode}`;
+    const message = `total_amount=${totalAmount},transaction_uuid=${transactionUUID},product_code=${productCode}`;
     const signature = crypto
       .createHmac("sha256", secretKey)
       .update(message)

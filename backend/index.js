@@ -4,14 +4,15 @@ const mysql = require("mysql2");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const nodemailer = require("nodemailer");
-const http = require('http');
+const http = require('http'); 
 const socketIo = require('socket.io');
 const vader = require('vader-sentiment');
 const db = require("./db");
 const { initializeChat } = require("./chatHandler");
 const NotificationService = require("./notificationService");
 const NotificationManager = require("./notificationManager");
+const authRoutes = require("./routes/authRoutes");
+const User = require("./models/userModel");
 
 
 const app = express();
@@ -39,249 +40,8 @@ app.use(cors({ origin: "http://localhost:3000", credentials: true }));
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 app.use(express.static('public'));
+app.use(authRoutes);
 
-const transporter = nodemailer.createTransport({
-  service: "Gmail", 
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
- 
-app.post("/signup", async (req, res) => {
-  try {
-    const { fullName, phone, email, password, gender } = req.body;
- 
-    if (!fullName || !phone || !email || !password || !gender) {
-      return res.status(400).json({ message: "All fields are required" });
-    }
-
-    const nameRegex = /^[A-Za-z]+([ '-][A-Za-z]+)+$/;
-    if (!nameRegex.test(fullName.trim())) {
-      return res.status(400).json({ message: "Full name must be at least 2 words and letters only" });
-    }
-
-    const allowedProviders = [
-      "gmail", "yahoo", "hotmail", "outlook", "icloud",
-      "aol", "protonmail", "zoho", "gmx", "mail"
-    ];
-    const allowedTLDs = [
-      "com", "edu", "io", "org", "net", "co", "gov",
-      "in", "ai", "app", "dev"
-    ];
-    const emailRegex = new RegExp(
-      `^[a-zA-Z0-9._%+-]+@(${allowedProviders.join("|")})\\.(${allowedTLDs.join("|")})$`,
-      "i"
-    );
-    if (!emailRegex.test(email.trim())) {
-      return res.status(400).json({ message: "Email must be from a specific provider and TLD" });
-    }
-    
-    const phoneDigits = phone.replace(/\D/g, "");
-    if (!/^\d{10}$/.test(phoneDigits)) {
-      return res.status(400).json({ message: "Phone number must be exactly 10 digits" });
-    } 
-    
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
-    if (!passwordRegex.test(password)) {
-      return res.status(400).json({ message: "Password must be 8+ characters with uppercase, lowercase, and a number" });
-    }
- 
-    const [existingEmail] = await db.promise().query(
-      "SELECT id FROM users WHERE email = ?",
-      [email.trim()]
-    );
-    if (existingEmail.length > 0) {
-      return res.status(400).json({ message: "Email already exists" });
-    }
-
-    const [existingPhone] = await db.promise().query(
-      "SELECT id FROM users WHERE phone = ?",
-      [phoneDigits]
-    );
-    if (existingPhone.length > 0) {
-      return res.status(400).json({ message: "Phone number already exists" });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10); 
-   
-    await db.promise().query(
-      "INSERT INTO users (fullName, phone, email, password, gender) VALUES (?, ?, ?, ?, ?)",
-      [fullName.trim(), phoneDigits, email.trim(), hashedPassword, gender]
-    );
-
-    return res.json({ message: "User registered successfully" });
-
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: "Server error" });
-  }
-}); 
- 
-app.post("/login", async (req, res) => {
-  try {
-    let { email, password, rememberMe } = req.body;
- 
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required" });
-    }
-
-    email = email.trim();
-    password = password.trim();
-
-    const allowedProviders = [
-      "gmail", "yahoo", "hotmail", "outlook", "icloud",
-      "aol", "protonmail", "zoho", "gmx", "mail"
-    ];
-    const allowedTLDs = [
-      "com", "edu", "io", "org", "net", "co", "gov",
-      "in", "ai", "app", "dev"
-    ];
-    const emailRegex = new RegExp(
-      `^[a-zA-Z0-9._%+-]+@(${allowedProviders.join("|")})\\.(${allowedTLDs.join("|")})$`,
-      "i"
-    );
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ message: "Please enter a valid email address." });
-    }
- 
-    const [users] = await db.promise().query(
-      "SELECT * FROM users WHERE email = ?",
-      [email]
-    );
-
-    if (users.length === 0) {
-      return res.status(401).json({ message: "User not found" });
-    }
-
-    const user = users[0];
-
-    if (user.blocked) {
-      const reason = user.blockedReason?.trim();
-      return res.status(403).json({
-        message: reason
-          ? `You have been blocked due to ${reason}.`
-          : "You have been blocked. Please contact support.",
-      });
-    }
-
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) {
-      return res.status(401).json({ message: "Incorrect password" });
-    }
-
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role || "user" },
-      process.env.SECRET_KEY,
-      { expiresIn: rememberMe ? "30d" : "1h" }
-    );
-    
-    return res.json({
-      message: "Login successful",
-      token,
-      user: {
-        id: user.id,
-        fullName: user.fullName,
-        role: user.role || "user",
-      },
-    });
-
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: "Server error" });
-  }
-});
- 
-app.post("/forgot-password", (req, res) => { 
-  const { email } = req.body; 
-  if (!email) return res.status(400).json({ message: "Email required" });
-
-  db.query("SELECT * FROM users WHERE email = ?", [email], (err, results) => {
-    if (err) return res.status(500).json({ message: "Database error" });
-    if (results.length === 0)
-      return res.json({ message: "If the email is registered, instructions sent" });
-
-    const user = results[0]; 
-    const resetToken = jwt.sign({ id: user.id }, process.env.SECRET_KEY, { expiresIn: "15m" }); 
-    const resetTokenSafe = encodeURIComponent(resetToken);
-
-   
-    db.query(
-      "UPDATE users SET resetToken = ?, resetExpires = DATE_ADD(NOW(), INTERVAL 15 MINUTE) WHERE id = ?",
-      [resetToken, user.id],
-      (err) => {
-        if (err) return res.status(500).json({ message: "Database error" });
-
-        const resetLink = `http://localhost:3000/reset-password?token=${resetTokenSafe}`;
-        console.log("Password reset link:", resetLink);
-
-        transporter.sendMail({
-          from: process.env.EMAIL_USER,
-          to: email,
-          subject: "Password Reset",
-          text: `Hello,\n\nWe received a request to reset your password for your Singar Glow account.\n\nTo reset your password, please click the link below:\n${resetLink}\n\nThis link will expire in 15 minutes. Please make sure to use it before then. If you didn't request a password reset, you can safely ignore this email.\n\nThank you,\nThe Singar Glow Team`,
-        });
-
-        res.json({ message: "Reset instructions sent" });
-      }
-    );
-  });
-});
- 
-app.post("/reset-password", async (req, res) => {
-  const { token, newPassword } = req.body;
-  if (!token || !newPassword)
-    return res.status(400).json({ message: "Missing token or password" });
- 
-  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
-  if (!passwordRegex.test(newPassword)) {
-    return res.status(400).json({
-      message:
-        "Password must be 8+ characters and include uppercase, lowercase, number, and special character",
-    });
-  }
-
-  let payload;
-  try {
-
-    payload = jwt.verify(decodeURIComponent(token), process.env.SECRET_KEY);
-  } catch {
-    return res.status(400).json({ message: "Invalid or expired token" });
-  }
-
-  db.query(
-    `SELECT password FROM users WHERE id = ? AND resetToken = ? AND resetExpires > NOW()`,
-    [payload.id, token],
-    async (err, results) => {
-      if (err) return res.status(500).json({ message: "Database error" });
-      if (results.length === 0)
-        return res.status(400).json({ message: "Invalid or expired token" });
-
-      try {
-        const currentHashedPassword = results[0].password;
- 
-        const isSamePassword = await bcrypt.compare(newPassword, currentHashedPassword);
-        if (isSamePassword) {
-          return res.status(400).json({ message: "New password cannot be the same as the previous password" });
-        }
- 
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-        db.query(
-          `UPDATE users SET password = ?, resetToken = NULL, resetExpires = NULL WHERE id = ?`,
-          [hashedPassword, payload.id],
-          (err) => {
-            if (err) return res.status(500).json({ message: "Database error" });
-            res.json({ message: "Password reset successful" });
-          }
-        );
-      } catch {
-        res.status(500).json({ message: "Error processing password" });
-      }
-    }
-  );
-});
- 
 app.get("/", (req, res) => {
   res.send("Chat server is running!");
 });
@@ -291,6 +51,152 @@ const notificationService = new NotificationService(io);
 
 // Initialize chat (pass notification service for chat-message notifications)
 initializeChat(io, notificationService);
+
+const slotHolds = new Map();
+const SLOT_HOLD_MS = 2 * 60 * 1000;
+
+const getSlotHoldKey = (date, slot) => `${date}|${slot}`;
+
+const releaseSlotHold = (key) => {
+  const hold = slotHolds.get(key);
+  if (!hold) return;
+
+  clearTimeout(hold.timeoutId);
+  slotHolds.delete(key);
+  io.to(`booking_date_${hold.date}`).emit("booking_slot_released", {
+    date: hold.date,
+    slot: hold.slot,
+  });
+};
+
+const getBlockedSlotsForDate = (date, includeHolds = true) => {
+  return new Promise((resolve, reject) => {
+    db.query(
+      `SELECT b.booking_time, COALESCE(s.duration, p.duration, b.custom_service_duration) AS duration
+       FROM bookings b
+       LEFT JOIN services s ON b.service_id = s.id
+       LEFT JOIN packages p ON b.package_id = p.id
+       WHERE b.booking_date = ? AND b.status <> 'cancelled'`,
+      [date],
+      (err, results) => {
+        if (err) return reject(err);
+
+        const blockedSlots = [];
+
+        results.forEach((booking) => {
+          let [hour, minute] = booking.booking_time.split(":").map(Number);
+          const duration = Number(String(booking.duration || 60).replace(/\D/g, "")) || 60;
+          const slotCount = Math.ceil(duration / 60);
+
+          for (let i = 0; i < slotCount; i++) {
+            const h = hour + i;
+            const slotStr = `${h.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
+            blockedSlots.push(slotStr);
+          }
+        });
+
+        const heldSlots = includeHolds
+          ? Array.from(slotHolds.values())
+              .filter((hold) => hold.date === date)
+              .map((hold) => hold.slot)
+          : [];
+
+        resolve([...new Set([...blockedSlots, ...heldSlots])]);
+      }
+    );
+  });
+};
+
+const ensureSlotAvailable = async (date, slot) => {
+  const blockedSlots = await getBlockedSlotsForDate(date, false);
+  return !blockedSlots.includes(slot);
+};
+
+const RESCHEDULE_CUTOFF_MS = 12 * 60 * 60 * 1000;
+const CANCELLATION_CHARGE_RATE = 0.15;
+const RESCHEDULE_CUTOFF_MESSAGE =
+  "Bookings can only be rescheduled at least 12 hours before the appointment.";
+
+const formatDateForSlot = (value) => {
+  if (value instanceof Date) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  return String(value || "").split("T")[0];
+};
+
+const getBookingDateTime = (date, time) => {
+  const normalizedDate = formatDateForSlot(date);
+  const normalizedTime = String(time || "").slice(0, 5);
+  const bookingDateTime = new Date(`${normalizedDate}T${normalizedTime}:00`);
+  return Number.isNaN(bookingDateTime.getTime()) ? null : bookingDateTime;
+};
+
+const isBeforeRescheduleCutoff = (date, time) => {
+  const bookingDateTime = getBookingDateTime(date, time);
+  return Boolean(bookingDateTime && bookingDateTime.getTime() - Date.now() < RESCHEDULE_CUTOFF_MS);
+};
+
+const broadcastBookedSlot = (date, slot) => {
+  const key = getSlotHoldKey(date, slot);
+  releaseSlotHold(key);
+  io.to(`booking_date_${date}`).emit("booking_slot_booked", { date, slot });
+};
+
+io.on("connection", (socket) => {
+  socket.on("join_booking_date", ({ date }) => {
+    if (date) socket.join(`booking_date_${date}`);
+  });
+
+  socket.on("leave_booking_date", ({ date }) => {
+    if (date) socket.leave(`booking_date_${date}`);
+  });
+
+  socket.on("hold_booking_slot", ({ date, slot }) => {
+    if (!date || !slot) return;
+
+    const key = getSlotHoldKey(date, slot);
+    const existingHold = slotHolds.get(key);
+
+    if (existingHold && existingHold.socketId !== socket.id) {
+      socket.emit("booking_slot_hold_failed", { date, slot });
+      return;
+    }
+
+    if (existingHold) {
+      clearTimeout(existingHold.timeoutId);
+    }
+
+    const timeoutId = setTimeout(() => releaseSlotHold(key), SLOT_HOLD_MS);
+    slotHolds.set(key, { date, slot, socketId: socket.id, timeoutId });
+
+    socket.to(`booking_date_${date}`).emit("booking_slot_held", {
+      date,
+      slot,
+    });
+  });
+
+  socket.on("release_booking_slot", ({ date, slot }) => {
+    if (!date || !slot) return;
+
+    const key = getSlotHoldKey(date, slot);
+    const hold = slotHolds.get(key);
+    if (hold?.socketId === socket.id) {
+      releaseSlotHold(key);
+    }
+  });
+
+  socket.on("disconnect", () => {
+    Array.from(slotHolds.entries()).forEach(([key, hold]) => {
+      if (hold.socketId === socket.id) {
+        releaseSlotHold(key);
+      }
+    });
+  });
+}); 
  
 const getReceiverByRole = (receiverId, senderRole) => {
   return new Promise((resolve, reject) => {
@@ -324,10 +230,41 @@ const verifyAdmin = (req, res, next) => {
 };
  
 app.get("/admin/users", verifyAdmin, (req, res) => {
-  db.query("SELECT * FROM users", (err, results) => {
+  db.query(
+    `SELECT
+      id,
+      fullName,
+      phone,
+      email,
+      gender,
+      created_at,
+      role,
+      blocked,
+      blockedReason,
+      isEmailVerified,
+      failedLoginAttempts,
+      lockUntil
+    FROM users
+    ORDER BY created_at DESC, id DESC`,
+    (err, results) => {
     if (err) return res.status(500).json({ message: "Database error" });
     res.json(results);
-  });
+    }
+  );
+});
+
+app.delete("/admin/users/unverified-expired", verifyAdmin, async (req, res) => {
+  try {
+    const deletedCount = await User.deleteExpiredUnverifiedUsers();
+
+    return res.json({
+      message: "Expired unverified accounts cleaned up",
+      deletedCount,
+    });
+  } catch (err) {
+    console.error("Error cleaning expired unverified users:", err);
+    return res.status(500).json({ message: "Database error" });
+  }
 });
 
 app.put("/admin/users/:id/role", verifyAdmin, (req, res) => {
@@ -403,12 +340,23 @@ app.post("/admin/users/:id/unblock", verifyAdmin, (req, res) => {
 app.delete("/admin/users/:id", verifyAdmin, (req, res) => {
   const userId = req.params.id;
 
-  db.query("DELETE FROM users WHERE id = ?", [userId], (err, result) => {
-    if (err) return res.status(500).json({ message: "Database error" });
-    if (result.affectedRows === 0) {
+  db.query("SELECT role FROM users WHERE id = ?", [userId], (findErr, rows) => {
+    if (findErr) return res.status(500).json({ message: "Database error" });
+    if (rows.length === 0) {
       return res.status(404).json({ message: "User not found" });
     }
-    res.json({ message: "User deleted" });
+
+    if (rows[0].role === "admin") {
+      return res.status(403).json({ message: "Admin accounts cannot be deleted" });
+    }
+
+    db.query("DELETE FROM users WHERE id = ?", [userId], (err, result) => {
+      if (err) return res.status(500).json({ message: "Database error" });
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json({ message: "User deleted" });
+    });
   });
 });
 
@@ -461,6 +409,52 @@ app.get("/services", (req, res) => {
   );
 });
  
+app.get("/services/:id", (req, res) => {
+  db.query(
+    `SELECT s.id,
+            s.name,
+            s.description,
+            s.price,
+            s.duration,
+            s.image,
+            s.status,
+            s.created_at,
+            s.gender,
+            s.category,
+            IFNULL(ROUND(AVG(f.rating), 1), 0) AS rating,
+            COUNT(f.id) AS review_count
+     FROM services s
+     LEFT JOIN bookings b ON b.service_id = s.id
+     LEFT JOIN feedback f ON f.booking_id = b.id
+     WHERE s.id = ? AND s.status = 'active'
+     GROUP BY s.id, s.name, s.description, s.price, s.duration, s.image, s.status, s.created_at, s.gender, s.category`,
+    [req.params.id],
+    (err, results) => {
+      if (err) return res.status(500).json({ message: "Database error" });
+      if (!results || results.length === 0)
+        return res.status(404).json({ message: "Service not found" });
+      res.json(results[0]);
+    }
+  );
+});
+
+app.get("/services/:id/reviews", async (req, res) => {
+  try {
+    const [rows] = await db.promise().query(
+      `SELECT u.fullname AS customer, f.rating, f.feedback_text AS review, f.created_at
+       FROM feedback f
+       JOIN users u ON f.user_id = u.id
+       JOIN bookings b ON f.booking_id = b.id
+       WHERE b.service_id = ?
+       ORDER BY f.created_at DESC`,
+      [req.params.id]
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: "Database error" });
+  }
+});
+
 app.post("/admin/services",verifyAdmin,serviceUpload.single("image"),
   (req, res) => {
     const { name, description, price, duration, gender, category } = req.body;
@@ -635,40 +629,6 @@ app.put("/profile", verifyUser, (req, res) => {
   );
 });
 
-app.post("/google-login", async (req, res) => {
-  try {
-    const { email } = req.body;
-
-    const [results] = await db.promise().query(
-      "SELECT * FROM users WHERE email = ?",
-      [email]
-    );
-
-    if (results.length === 0) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const user = results[0]; 
-    const token = jwt.sign(
-      { id: user.id, role: user.role },
-      process.env.SECRET_KEY,
-      { expiresIn: "1d" }
-    );
-
-    res.json({
-      token,
-      user: {
-        id: user.id,
-        fullName: user.fullName,
-        role: user.role,
-      },
-    });
-  } catch (err) {
-    console.error("Google login error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
- 
 app.put("/profile/change-password", verifyUser, async (req, res) => {
   const userId = req.user.id;
   const { currentPassword, newPassword } = req.body;
@@ -678,6 +638,12 @@ app.put("/profile/change-password", verifyUser, async (req, res) => {
   db.query("SELECT password FROM users WHERE id=?", [userId], async (err, results) => {
     if (err) return res.status(500).json({ message: "DB error" });
     if (results.length === 0) return res.status(404).json({ message: "User not found" });
+
+    if (!results[0].password) {
+      return res.status(400).json({
+        message: "This account uses Google sign-in. Use forgot password to create a password first.",
+      });
+    }
 
     const match = await bcrypt.compare(currentPassword, results[0].password);
     if (!match) return res.status(400).json({ message: "Current password incorrect" });
@@ -734,8 +700,10 @@ app.put("/profile/photo", verifyUser, upload.single("photo"), (req, res) => {
 });
  
 app.post("/bookings", verifyUser, (req, res) => {
-  const { service_ids, package_id, booking_date, booking_time, notes, location_type, address } = req.body;
+  const { service_ids, package_id, booking_date, booking_time, notes, location_type, address, payment_method } = req.body;
   const user_id = req.user.id;
+  const userId = req.user.id;
+  const initialStatus = payment_method === "esewa" ? "pending" : "upcoming";
  
   if (!booking_date || !booking_time) {
     return res.status(400).json({ message: "Date and time are required" });
@@ -756,10 +724,29 @@ app.post("/bookings", verifyUser, (req, res) => {
   if ((!service_ids || service_ids.length === 0) && !package_id) {
     return res.status(400).json({ message: "Select at least one service or a package" });
   }
+
+  const normalizedServiceIds = Array.isArray(service_ids)
+    ? service_ids.map((id) => Number(id)).filter(Boolean)
+    : [];
+
+  ensureSlotAvailable(booking_date, booking_time)
+    .then((isAvailable) => {
+      if (!isAvailable) {
+        return res.status(409).json({ message: "This time slot is already booked" });
+      }
+
+      continueBooking();
+    })
+    .catch((err) => {
+      console.error("Slot availability error:", err);
+      return res.status(500).json({ message: "DB error", error: err.message });
+    });
+
+  function continueBooking() {
  
   if (package_id) {
     db.query(
-      "SELECT id FROM bookings WHERE user_id = ? AND package_id = ? AND status != 'cancelled'",
+      "SELECT id FROM bookings WHERE user_id = ? AND package_id = ? AND status NOT IN ('cancelled', 'pending')",
       [user_id, package_id],
       (err, results) => {
         if (err) return res.status(500).json({ message: "DB error", error: err });
@@ -770,8 +757,8 @@ app.post("/bookings", verifyUser, (req, res) => {
         db.query(
           `INSERT INTO bookings 
            (user_id, package_id, booking_date, booking_time, notes, status, location_type, address)
-           VALUES (?, ?, ?, ?, ?, 'upcoming', ?, ?)`,
-          [user_id, package_id, booking_date, booking_time, notes || null, location_type, address || null],
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [user_id, package_id, booking_date, booking_time, notes || null, initialStatus, location_type, address || null],
           (err, result) => {
             if (err) return res.status(500).json({ message: "DB error", error: err });
 
@@ -795,6 +782,7 @@ app.post("/bookings", verifyUser, (req, res) => {
                   }
                 }
 
+                broadcastBookedSlot(booking_date, booking_time);
                 return res.json({
                   message: "Package booking successful",
                   bookingId: result.insertId,
@@ -807,32 +795,100 @@ app.post("/bookings", verifyUser, (req, res) => {
     );
     return;
   }
+
+  if (normalizedServiceIds.length > 1) {
+    db.query(
+      `SELECT id, name, price, duration
+       FROM services
+       WHERE id IN (?) AND status = 'active'`,
+      [normalizedServiceIds],
+      async (err, serviceRows) => {
+        if (err) return res.status(500).json({ message: "DB error", error: err });
+        if (!serviceRows || serviceRows.length !== normalizedServiceIds.length) {
+          return res.status(400).json({ message: "One or more selected services are unavailable" });
+        }
+
+        const orderedServices = normalizedServiceIds
+          .map((id) => serviceRows.find((service) => Number(service.id) === id))
+          .filter(Boolean);
+        const customServiceNames = orderedServices.map((service) => service.name).join(", ");
+        const customServicePrice = orderedServices.reduce((sum, service) => sum + Number(service.price || 0), 0);
+        const customServiceDuration = orderedServices.reduce(
+          (sum, service) => sum + (Number(String(service.duration || "").replace(/\D/g, "")) || 0),
+          0
+        );
+
+        db.query(
+          `INSERT INTO bookings
+           (user_id, booking_date, booking_time, notes, status, location_type, address,
+            custom_service_ids, custom_service_names, custom_service_price, custom_service_duration)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            user_id,
+            booking_date,
+            booking_time,
+            notes || null,
+            initialStatus,
+            location_type,
+            address || null,
+            JSON.stringify(normalizedServiceIds),
+            customServiceNames,
+            customServicePrice,
+            customServiceDuration,
+          ],
+          async (insertErr, result) => {
+            if (insertErr) return res.status(500).json({ message: "DB error", error: insertErr });
+
+            try {
+              await notificationService.notifyNewBooking({
+                userId,
+                bookingId: result.insertId,
+                serviceName: customServiceNames,
+                packageName: null,
+                bookingDate,
+                bookingTime,
+              });
+            } catch (notificationError) {
+              console.error("Error sending custom booking notification:", notificationError);
+            }
+
+            broadcastBookedSlot(booking_date, booking_time);
+            return res.json({
+              message: "Custom booking successful",
+              bookingId: result.insertId,
+            });
+          }
+        );
+      }
+    );
+    return;
+  }
  
   const insertedBookingIds = [];
 
   let checkedCount = 0;
   const duplicates = [];
 
-  service_ids.forEach((service_id) => {
+  normalizedServiceIds.forEach((service_id) => {
     db.query(
-      "SELECT id FROM bookings WHERE user_id = ? AND service_id = ? AND status != 'cancelled'",
+      "SELECT id FROM bookings WHERE user_id = ? AND service_id = ? AND status NOT IN ('cancelled', 'pending')",
       [user_id, service_id],
       (err, results) => {
         if (err) return res.status(500).json({ message: "DB error", error: err });
         if (results.length > 0) duplicates.push(service_id);
         checkedCount++;
-        if (checkedCount === service_ids.length) {
+        if (checkedCount === normalizedServiceIds.length) {
           if (duplicates.length > 0) {
             return res.status(400).json({ message: "You have already booked one or more of these services" });
           }
 
         const insertNext = (index) => {
-          if (index >= service_ids.length) {
+          if (index >= normalizedServiceIds.length) {
             // Send notifications for all booked services
             Promise.all(
               insertedBookingIds.map(async (bookingId, idx) => {
                 try {
-                  const serviceId = service_ids[idx];
+                  const serviceId = normalizedServiceIds[idx];
                   const serviceResult = await new Promise((resolve, reject) => {
                     db.query("SELECT name FROM services WHERE id = ?", [serviceId], (err, results) => {
                       if (err) reject(err);
@@ -853,12 +909,14 @@ app.post("/bookings", verifyUser, (req, res) => {
                 }
               })
             ).then(() => {
+              broadcastBookedSlot(booking_date, booking_time);
               return res.json({
                 message: "Booking successful",
                 bookingIds: insertedBookingIds,
               });
             }).catch((error) => {
               console.error("Error sending notifications:", error);
+              broadcastBookedSlot(booking_date, booking_time);
               return res.json({
                 message: "Booking successful",
                 bookingIds: insertedBookingIds,
@@ -867,13 +925,13 @@ app.post("/bookings", verifyUser, (req, res) => {
             return;
           }
 
-          const service_id = service_ids[index];
+          const service_id = normalizedServiceIds[index];
 
           db.query(
             `INSERT INTO bookings 
              (user_id, service_id, booking_date, booking_time, notes, status, location_type, address)
-             VALUES (?, ?, ?, ?, ?, 'upcoming', ?, ?)`,
-            [user_id, service_id, booking_date, booking_time, notes || null, location_type, address || null],
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [user_id, service_id, booking_date, booking_time, notes || null, initialStatus, location_type, address || null],
             (err, result) => {
               if (err) return res.status(500).json({ message: "DB error", error: err });
 
@@ -887,6 +945,7 @@ app.post("/bookings", verifyUser, (req, res) => {
       }
     });
   });
+  }
 });
   
 app.get("/bookings/my", verifyUser, (req, res) => {
@@ -902,7 +961,12 @@ app.get("/bookings/my", verifyUser, (req, res) => {
       b.feedback_submitted,
       b.address,
       b.location_type,
+      b.service_id,
       b.package_id,
+      b.custom_service_ids,
+      b.custom_service_names,
+      b.custom_service_price,
+      b.custom_service_duration,
 
       s.name AS service_name,
       s.price AS service_price,
@@ -930,6 +994,9 @@ app.get("/admin/bookings", verifyAdmin, (req, res) => {
             u.fullName AS user, 
             s.name AS service, 
             p.name AS package, 
+            b.custom_service_names,
+            b.custom_service_price,
+            b.custom_service_duration,
             b.booking_date, 
             b.booking_time, 
             b.notes, 
@@ -953,7 +1020,8 @@ app.put("/bookings/:id/cancel", verifyUser, (req, res) => {
 
   // First get booking details for notification
   db.query(
-    `SELECT b.*, s.name AS service_name, p.name AS package_name
+    `SELECT b.*, s.name AS service_name, p.name AS package_name,
+            COALESCE(s.price, p.price, b.custom_service_price, 0) AS booking_amount
      FROM bookings b
      LEFT JOIN services s ON b.service_id = s.id
      LEFT JOIN packages p ON b.package_id = p.id
@@ -964,6 +1032,9 @@ app.put("/bookings/:id/cancel", verifyUser, (req, res) => {
       if (bookingResults.length === 0) return res.status(404).json({ message: "Booking not found" });
 
       const booking = bookingResults[0];
+      const cancellationAmount = Number(booking.booking_amount) || 0;
+      const cancellationCharge = Number((cancellationAmount * CANCELLATION_CHARGE_RATE).toFixed(2));
+      const estimatedRefund = Number(Math.max(cancellationAmount - cancellationCharge, 0).toFixed(2));
 
       // Update booking status
       db.query(
@@ -977,7 +1048,7 @@ app.put("/bookings/:id/cancel", verifyUser, (req, res) => {
             await notificationService.notifyBookingCancellation({
               userId,
               bookingId,
-              serviceName: booking.service_name,
+              serviceName: booking.service_name || booking.custom_service_names,
               packageName: booking.package_name,
               bookingDate: booking.booking_date,
               bookingTime: booking.booking_time
@@ -986,9 +1057,34 @@ app.put("/bookings/:id/cancel", verifyUser, (req, res) => {
             console.error("Error sending cancellation notification:", notificationError);
           }
 
-          res.json({ message: "Booking cancelled" });
+          res.json({
+            message: `Booking cancelled. 15% cancellation charge deducted: Rs. ${cancellationCharge.toFixed(2)}. Estimated refund: Rs. ${estimatedRefund.toFixed(2)}.`,
+            cancellationCharge,
+            estimatedRefund,
+          });
         }
       );
+    }
+  );
+});
+
+app.patch("/bookings/payment-failed", verifyUser, (req, res) => {
+  const { bookingIds } = req.body;
+  const userId = req.user.id;
+
+  if (!bookingIds || !Array.isArray(bookingIds) || bookingIds.length === 0) {
+    return res.status(400).json({ message: "No booking IDs provided" });
+  }
+
+  db.query(
+    "UPDATE bookings SET status='cancelled' WHERE id IN (?) AND user_id=? AND status IN ('pending', 'upcoming')",
+    [bookingIds, userId],
+    (err, result) => {
+      if (err) return res.status(500).json({ message: "DB error" });
+      res.json({
+        message: "Failed payment booking cancelled",
+        cancelledCount: result.affectedRows,
+      });
     }
   );
 });
@@ -1011,8 +1107,12 @@ app.put("/bookings/:id/reschedule", (req, res) => {
       }
 
       const booking = results[0];
+
+      if (isBeforeRescheduleCutoff(booking.booking_date, booking.booking_time)) {
+        return res.status(400).json({ message: RESCHEDULE_CUTOFF_MESSAGE });
+      }
  
-      booking_date = booking_date || booking.booking_date;
+      booking_date = formatDateForSlot(booking_date || booking.booking_date);
       booking_time = booking_time || booking.booking_time;
       location_type = location_type || booking.location_type || "salon";
       address = location_type === "home" ? (address || booking.address || "") : "salon";
@@ -1030,21 +1130,46 @@ app.put("/bookings/:id/reschedule", (req, res) => {
       if (!booking_time) return res.status(400).json({ message: "Booking time is required" });
 
       if (booking_time.length === 5) booking_time += ":00";
+      const normalizedBookingTime = booking_time.slice(0, 5);
+      const originalBookingDate = formatDateForSlot(booking.booking_date);
+      const originalBookingTime = String(booking.booking_time).slice(0, 5);
 
-      db.query(
-        `UPDATE bookings 
-         SET booking_date=?, booking_time=?, location_type=?, address=?, notes=COALESCE(?, notes)
-         WHERE id=?`,
-        [booking_date, booking_time, location_type, address, reason, bookingId],
-        (err) => {
-          if (err) {
-            console.error("DB Error:", err);
-            return res.status(500).json({ message: "Internal server error", error: err });
+      ensureSlotAvailable(booking_date, normalizedBookingTime)
+        .then((isAvailable) => {
+          const isOriginalSlot =
+            booking_date === originalBookingDate && normalizedBookingTime === originalBookingTime;
+
+          if (!isAvailable && !isOriginalSlot) {
+            return res.status(409).json({ message: "Selected time slot is no longer available" });
           }
 
-          res.json({ message: "Booking rescheduled successfully" });
-        }
-      );
+          db.query(
+            `UPDATE bookings 
+             SET booking_date=?, booking_time=?, location_type=?, address=?, notes=COALESCE(?, notes)
+             WHERE id=?`,
+            [booking_date, booking_time, location_type, address, reason, bookingId],
+            (err) => {
+              if (err) {
+                console.error("DB Error:", err);
+                return res.status(500).json({ message: "Internal server error", error: err });
+              }
+
+              if (!isOriginalSlot) {
+                io.to(`booking_date_${originalBookingDate}`).emit("booking_slot_released", {
+                  date: originalBookingDate,
+                  slot: originalBookingTime,
+                });
+                broadcastBookedSlot(booking_date, normalizedBookingTime);
+              }
+
+              res.json({ message: "Booking rescheduled successfully" });
+            }
+          );
+        })
+        .catch((availabilityErr) => {
+          console.error("Slot availability error:", availabilityErr);
+          res.status(500).json({ message: "Could not verify slot availability" });
+        });
     }
   );
 });
@@ -1089,37 +1214,13 @@ app.get("/bookings/booked-slots", (req, res) => {
   if (!date) {
     return res.status(400).json({ message: "Date is required" });
   }
- 
-  db.query(
-    `SELECT b.booking_time, s.duration AS service_duration
-     FROM bookings b
-     JOIN services s ON b.service_id = s.id
-     WHERE b.booking_date = ? AND b.status = 'upcoming'`,
-    [date],
-    (err, results) => {
-      if (err) {
-        console.error("DB Error:", err);
-        return res.status(500).json({ message: "DB error", error: err });
-      }
 
-      const blockedSlots = [];
-
-      results.forEach((booking) => { 
-        let [hour, minute] = booking.booking_time.split(":").map(Number); 
-        const duration = Number(String(booking.service_duration).replace(/\D/g, ""));
-        const slotCount = Math.ceil(duration / 60); 
-
-        for (let i = 0; i < slotCount; i++) {
-          const h = hour + i;
-          const slotStr = `${h.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
-          blockedSlots.push(slotStr);
-        }
-      }); 
-      const uniqueBlockedSlots = [...new Set(blockedSlots)];
-
-      res.json(uniqueBlockedSlots);
-    }
-  );
+  getBlockedSlotsForDate(date)
+    .then((blockedSlots) => res.json(blockedSlots))
+    .catch((err) => {
+      console.error("DB Error:", err);
+      res.status(500).json({ message: "DB error", error: err.message });
+    });
 }); 
 
 app.post("/bookings/:id/review", verifyUser, async (req, res) => {
@@ -1193,6 +1294,36 @@ app.get("/bookings/:id/review", async (req, res) => {
         submittedAt: f.created_at
       }))
     });
+  } catch (err) {
+    console.error("Database error:", err);
+    res.status(500).json({ message: "Database error", error: err.message });
+  }
+});
+
+app.get("/reviews", async (req, res) => {
+  try {
+    const [rows] = await db.promise().query(
+      `SELECT
+         f.booking_id AS bookingId,
+         u.fullname AS customer,
+         f.rating,
+         f.feedback_text AS review,
+         f.created_at,
+         COALESCE(s.name, p.name, 'Singar Glow service') AS itemName,
+         CASE
+           WHEN s.id IS NOT NULL THEN 'Service'
+           WHEN p.id IS NOT NULL THEN 'Package'
+           ELSE 'Booking'
+         END AS itemType
+       FROM feedback f
+       JOIN users u ON f.user_id = u.id
+       JOIN bookings b ON f.booking_id = b.id
+       LEFT JOIN services s ON b.service_id = s.id
+       LEFT JOIN packages p ON b.package_id = p.id
+       ORDER BY f.created_at DESC`
+    );
+
+    res.json(rows);
   } catch (err) {
     console.error("Database error:", err);
     res.status(500).json({ message: "Database error", error: err.message });
@@ -1424,6 +1555,24 @@ app.get("/packages", (req, res) => {
   );
 });
 
+app.get("/packages/:id/reviews", async (req, res) => {
+  try {
+    const [rows] = await db.promise().query(
+      `SELECT u.fullname AS customer, f.rating, f.feedback_text AS review, f.created_at
+       FROM feedback f
+       JOIN users u ON f.user_id = u.id
+       JOIN bookings b ON f.booking_id = b.id
+       WHERE b.package_id = ?
+       ORDER BY f.created_at DESC`,
+      [req.params.id]
+    );
+
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: "Database error" });
+  }
+});
+
 app.get("/packages/:id", (req, res) => {
   const packageId = req.params.id;
 
@@ -1613,7 +1762,7 @@ app.get("/admin/monthly-stats", verifyAdmin, async (req, res) => {
       SELECT
         DATE_FORMAT(b.booking_date, '%Y-%m') AS month,
         COUNT(b.id) AS bookings,
-        COALESCE(SUM(IFNULL(s.price, 0) + IFNULL(p.price, 0)), 0) AS revenue
+        COALESCE(SUM(IFNULL(s.price, 0) + IFNULL(p.price, 0) + IFNULL(b.custom_service_price, 0)), 0) AS revenue
       FROM bookings b
       LEFT JOIN services s ON b.service_id = s.id
       LEFT JOIN packages p ON b.package_id = p.id
@@ -1824,8 +1973,8 @@ app.patch("/bookings/confirm", verifyUser, (req, res) => {
  
       db.query(
         `UPDATE bookings 
-         SET status = 'confirmed' 
-         WHERE id IN (?) AND user_id = ? AND status = 'upcoming'`,
+         SET status = 'upcoming' 
+         WHERE id IN (?) AND user_id = ? AND status IN ('pending', 'upcoming')`,
         [bookingIds, user_id],
         (err, result) => {
           if (err) {
@@ -1855,6 +2004,118 @@ app.patch("/bookings/confirm", verifyUser, (req, res) => {
  
 const paymentsRouter = require("./payments");
 app.use("/payments", paymentsRouter);
+
+app.get("/admin/payments", verifyAdmin, (req, res) => {
+  const query = `
+    SELECT
+      p.id,
+      p.reference_id,
+      p.transaction_id,
+      p.amount,
+      p.booking_ids,
+      p.status,
+      p.payment_method,
+      p.created_at,
+      u.id AS user_id,
+      u.fullName AS customer_name,
+      u.email AS customer_email,
+      GROUP_CONCAT(DISTINCT b.id ORDER BY b.id SEPARATOR ', ') AS booking_numbers,
+      GROUP_CONCAT(DISTINCT COALESCE(pk.name, s.name) ORDER BY b.id SEPARATOR ', ') AS items
+    FROM payments p
+    JOIN JSON_TABLE(
+      CONCAT('[', COALESCE(NULLIF(p.booking_ids, ''), 'null'), ']'),
+      '$[*]' COLUMNS (booking_id INT PATH '$' NULL ON EMPTY NULL ON ERROR)
+    ) payment_booking
+    JOIN bookings b ON b.id = payment_booking.booking_id
+    LEFT JOIN users u ON b.user_id = u.id
+    LEFT JOIN services s ON b.service_id = s.id
+    LEFT JOIN packages pk ON b.package_id = pk.id
+    GROUP BY
+      p.id,
+      p.reference_id,
+      p.transaction_id,
+      p.amount,
+      p.booking_ids,
+      p.status,
+      p.payment_method,
+      p.created_at,
+      u.id,
+      u.fullName,
+      u.email
+    ORDER BY p.created_at DESC
+  `;
+
+  db.query(query, (err, rows) => {
+    if (err) {
+      console.error("Admin payments error:", err);
+      return res.status(500).json({ message: "Database error" });
+    }
+
+    const payments = rows.map((payment) => ({
+      ...payment,
+      amount: Number(payment.amount) || 0,
+    }));
+
+    const paidStatuses = new Set(["completed", "success", "paid"]);
+    const summary = payments.reduce(
+      (totals, payment) => {
+        const status = String(payment.status || "").toLowerCase();
+        const isPaid = paidStatuses.has(status);
+
+        return {
+          totalRevenue: isPaid ? totals.totalRevenue + payment.amount : totals.totalRevenue,
+          completedCount: isPaid ? totals.completedCount + 1 : totals.completedCount,
+          pendingCount: status === "pending" ? totals.pendingCount + 1 : totals.pendingCount,
+          failedCount:
+            status === "failed" || status === "cancelled"
+              ? totals.failedCount + 1
+              : totals.failedCount,
+          transactionCount: totals.transactionCount + 1,
+        };
+      },
+      {
+        totalRevenue: 0,
+        completedCount: 0,
+        pendingCount: 0,
+        failedCount: 0,
+        transactionCount: 0,
+      }
+    );
+
+    res.json({ summary, payments });
+  });
+});
+
+app.patch("/admin/payments/:id/status", verifyAdmin, (req, res) => {
+  const paymentId = Number(req.params.id);
+  const status = String(req.body.status || "").toLowerCase();
+  const allowedStatuses = new Set(["pending", "completed", "failed", "cancelled"]);
+
+  if (!paymentId) {
+    return res.status(400).json({ message: "Invalid payment ID" });
+  }
+
+  if (!allowedStatuses.has(status)) {
+    return res.status(400).json({ message: "Invalid payment status" });
+  }
+
+  db.query(
+    "UPDATE payments SET status = ? WHERE id = ?",
+    [status, paymentId],
+    (err, result) => {
+      if (err) {
+        console.error("Admin payment status update error:", err);
+        return res.status(500).json({ message: "Database error" });
+      }
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+
+      res.json({ message: "Payment status updated", status });
+    }
+  );
+});
 
 app.post("/api/sentiment", (req, res) => {
   const { text } = req.body;  
@@ -1941,7 +2202,14 @@ app.get("/admin/messages/unread-per-user", verifyAdmin, async (req, res) => {
     const adminId = req.user.id;
     const [results] = await db.promise().query(
       `SELECT senderId AS userId, COUNT(*) AS unreadCount
-       FROM messages WHERE receiverId = ? AND isRead = FALSE
+       FROM messages
+       WHERE isRead = FALSE
+         AND senderId IN (SELECT id FROM users WHERE role = 'users')
+         AND (
+           receiverId = ?
+           OR receiverId = 999999
+           OR receiverId IN (SELECT id FROM users WHERE role = 'admin')
+         )
        GROUP BY senderId`,
       [adminId]
     );

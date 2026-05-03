@@ -1,5 +1,6 @@
-"use client";
+﻿"use client";
 
+import { apiUrl } from "@/lib/apiConfig";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminSidebar from "@/components/AdminSidebar";
@@ -24,7 +25,7 @@ export default function AddPackagePage() {
   const token = getToken();
 
   useEffect(() => {
-    fetch("http://localhost:5001/services")
+    fetch(apiUrl("/services"))
       .then((res) => res.json())
       .then((data) => setServices(Array.isArray(data) ? data : []))
       .catch(() => setServices([]));
@@ -68,7 +69,7 @@ export default function AddPackagePage() {
       formData.append("service_ids", JSON.stringify(selectedServices));
       if (image) formData.append("image", image);
 
-      const res = await fetch("http://localhost:5001/admin/packages", {
+      const res = await fetch(apiUrl("/admin/packages"), {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -84,7 +85,7 @@ export default function AddPackagePage() {
         return;
       }
 
-      toast.success("Package created successfully ✅");
+      toast.success("Package created successfully âœ…");
       setTimeout(() => {
         router.push("/admin/packages");
       }, 1000);

@@ -17,12 +17,16 @@ export const authOptions = {
         [user.email]
       );
 
-      if (existing.length > 0) { 
+      if (existing.length > 0) {
+        await db.promise().query(
+          "UPDATE users SET isEmailVerified = TRUE, emailVerificationToken = NULL, emailVerificationExpires = NULL WHERE email = ?",
+          [user.email]
+        );
         return true;
       }
  
       await db.promise().query(
-        "INSERT INTO users (fullName, email, role, photoUrl, created_at) VALUES (?, ?, 'users', ?, NOW())",
+        "INSERT INTO users (fullName, email, role, photoUrl, isEmailVerified, created_at) VALUES (?, ?, 'users', ?, TRUE, NOW())",
         [user.name, user.email, user.image]
       );
 

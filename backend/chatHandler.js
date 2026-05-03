@@ -145,7 +145,14 @@ const initializeChat = (io, notificationService = null) => {
               conversationUserId,
             });
  
-            markMessagesAsRead(currentUserId, conversationUserId);
+            markMessagesAsRead(currentUserId, conversationUserId, currentRole);
+            if (notificationService) {
+              notificationService.markChatNotificationsAsRead(
+                currentUserId,
+                conversationUserId,
+                currentRole
+              );
+            }
           }
         );
       } catch (error) {
@@ -250,7 +257,14 @@ const initializeChat = (io, notificationService = null) => {
 
         if (!currentUserId) return;
 
-        markMessagesAsRead(currentUserId, conversationUserId);
+        markMessagesAsRead(currentUserId, conversationUserId, socket.userRole);
+        if (notificationService) {
+          notificationService.markChatNotificationsAsRead(
+            currentUserId,
+            conversationUserId,
+            socket.userRole
+          );
+        }
       } catch (error) {
         console.error("Error marking as read:", error);
       }
@@ -297,14 +311,28 @@ const initializeChat = (io, notificationService = null) => {
   });
 };
  
-function markMessagesAsRead(currentUserId, senderUserId) {
-  const query = `
-    UPDATE messages
-    SET isRead = TRUE
-    WHERE receiverId = ? AND senderId = ? AND isRead = FALSE
-  `;
+function markMessagesAsRead(currentUserId, senderUserId, currentRole) {
+  const isAdmin = currentRole === "admin";
+  const query = isAdmin
+    ? `
+      UPDATE messages
+      SET isRead = TRUE
+      WHERE senderId = ?
+        AND isRead = FALSE
+        AND (
+          receiverId = ?
+          OR receiverId = 999999
+          OR receiverId IN (SELECT id FROM users WHERE role = 'admin')
+        )
+    `
+    : `
+      UPDATE messages
+      SET isRead = TRUE
+      WHERE receiverId = ? AND senderId = ? AND isRead = FALSE
+    `;
+  const params = isAdmin ? [senderUserId, currentUserId] : [currentUserId, senderUserId];
 
-  db.query(query, [currentUserId, senderUserId], (err) => {
+  db.query(query, params, (err) => {
     if (err) console.error("Error marking as read:", err);
   });
 }

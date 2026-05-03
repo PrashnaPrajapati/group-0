@@ -1,5 +1,6 @@
-"use client";
+﻿"use client";
 
+import { apiUrl } from "@/lib/apiConfig";
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import TextInput from "@/components/TextInput";
@@ -35,14 +36,14 @@ export default function ProfilePage() {
     const fetchProfile = async () => {
       try {
         setLoadingProfile(true);
-        const res = await fetch("http://localhost:5001/profile", {
+        const res = await fetch(apiUrl("/profile"), {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.message || `Request failed with status ${res.status}`);
  
         if (data.photoUrl && !data.photoUrl.startsWith("http")) {
-          data.photoUrl = `http://localhost:5001${data.photoUrl}`;
+          data.photoUrl = apiUrl(`${data.photoUrl}`);
         }
 
         setProfile({
@@ -69,7 +70,7 @@ export default function ProfilePage() {
     try {
       setLoadingProfile(true);
       const toastId = toast.info("Saving profile...", { autoClose: false });
-      const res = await fetch("http://localhost:5001/profile", {
+      const res = await fetch(apiUrl("/profile"), {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ fullName: profile.fullName, phone: profile.phone, address: profile.address }),
@@ -98,7 +99,7 @@ export default function ProfilePage() {
     try {
       setLoadingPassword(true);
       const toastId = toast.info("Changing password...", { autoClose: false });
-      const res = await fetch("http://localhost:5001/profile/change-password", {
+      const res = await fetch(apiUrl("/profile/change-password"), {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(passwords),
@@ -123,7 +124,7 @@ export default function ProfilePage() {
     formData.append("photo", file);
 
     try {
-      const res = await fetch("http://localhost:5001/profile/photo", {
+      const res = await fetch(apiUrl("/profile/photo"), {
         method: "PUT",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -132,7 +133,7 @@ export default function ProfilePage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message || `Upload failed with status ${res.status}`);
 
-      setProfile({ ...profile, photoUrl: `http://localhost:5001${data.photoUrl}` });
+      setProfile({ ...profile, photoUrl: apiUrl(`${data.photoUrl}`) });
       toast.success("Profile photo updated successfully!");
     } catch (err) {
       toast.error(err.message || "Failed to upload photo");

@@ -1,5 +1,6 @@
-"use client";
+﻿"use client";
 
+import { apiUrl } from "@/lib/apiConfig";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ToastContainer, toast } from "react-toastify";
@@ -58,7 +59,7 @@ export default function AddServicePage() {
       formData.append("category", form.category);
       if (image) formData.append("image", image);
 
-      const res = await fetch("http://localhost:5001/admin/services", {
+      const res = await fetch(apiUrl("/admin/services"), {
         method: "POST",
         headers: { 
           Authorization: "Bearer " + getToken(),
@@ -74,7 +75,7 @@ export default function AddServicePage() {
         return;
       }
  
-      toast.success("Service added successfully ✅", {
+      toast.success("Service added successfully âœ…", {
         position: "top-center",
         autoClose: 1000,
         hideProgressBar: false,
@@ -101,7 +102,7 @@ export default function AddServicePage() {
           onClick={() => router.back()}
           className="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
         >
-          ← Back
+          â† Back
         </button>
       </div>
  

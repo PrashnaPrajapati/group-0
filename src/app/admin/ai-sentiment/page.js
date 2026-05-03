@@ -1,5 +1,6 @@
-"use client"; 
- 
+﻿"use client";
+
+import { apiUrl } from "@/lib/apiConfig";
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminSidebar from "@/components/AdminSidebar";
@@ -35,7 +36,7 @@ export default function AiSentimentPage() {
       setError(null);
 
       try {
-        const url = new URL("http://localhost:5001/admin/ai-sentiment-details");
+        const url = new URL(apiUrl("/admin/ai-sentiment-details"));
         url.searchParams.set("page", page);
         url.searchParams.set("limit", limit);
         if (search.trim()) url.searchParams.set("search", search.trim());

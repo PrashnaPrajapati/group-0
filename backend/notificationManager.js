@@ -68,6 +68,59 @@ class NotificationManager {
       );
     });
   }
+
+  static markChatNotificationsAsRead(userId, conversationUserId, userRole) {
+    return new Promise((resolve, reject) => {
+      const messageFilter =
+        userRole === "admin"
+          ? "senderId = ?"
+          : "senderId = ? AND receiverId = ?";
+      const params =
+        userRole === "admin"
+          ? [userId, conversationUserId]
+          : [userId, conversationUserId, userId];
+
+      db.query(
+        `SELECT id FROM notifications
+         WHERE user_id = ?
+           AND type = 'chat_message'
+           AND is_read = FALSE
+           AND related_id IN (
+             SELECT id FROM messages WHERE ${messageFilter}
+           )`,
+        params,
+        (selectErr, notifications) => {
+          if (selectErr) {
+            console.error("Error finding chat notifications:", selectErr);
+            reject(selectErr);
+            return;
+          }
+
+          const notificationIds = (notifications || []).map((row) => row.id);
+          if (notificationIds.length === 0) {
+            resolve({ affectedRows: 0, notificationIds: [] });
+            return;
+          }
+
+          db.query(
+            "UPDATE notifications SET is_read = TRUE WHERE user_id = ? AND id IN (?)",
+            [userId, notificationIds],
+            (updateErr, result) => {
+              if (updateErr) {
+                console.error("Error marking chat notifications as read:", updateErr);
+                reject(updateErr);
+              } else {
+                resolve({
+                  affectedRows: result.affectedRows,
+                  notificationIds,
+                });
+              }
+            }
+          );
+        }
+      );
+    });
+  }
  
   static getUnreadCount(userId) {
     return new Promise((resolve, reject) => {

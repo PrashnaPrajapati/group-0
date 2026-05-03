@@ -58,15 +58,15 @@ export default function UserChatPage() {
   }
 
   return (
-    <div className="flex w-full min-h-screen bg-white">
+    <div className="flex h-screen w-full overflow-hidden bg-white">
       <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
-      <div className={`flex-1 flex flex-col min-h-screen ${isOpen ? "md:ml-70" : "pl-4 md:pl-8"}`}>
-      <Navbar />
+      <div className="flex min-h-0 flex-1 flex-col">
+        <Navbar />
 
-    <div className="flex-1 flex flex-col min-h-screen pt-20">
-      <Chat userId={userId} isAdmin={false} />
-    </div>
-    </div>
+        <div className="flex min-h-0 flex-1 flex-col pt-20">
+          <Chat userId={userId} isAdmin={false} />
+        </div>
+      </div>
     </div>
   
   );

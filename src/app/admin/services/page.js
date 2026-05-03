@@ -1,5 +1,6 @@
-"use client";
+﻿"use client";
 
+import { apiUrl } from "@/lib/apiConfig";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ToastContainer, toast } from "react-toastify";
@@ -17,7 +18,7 @@ export default function AdminServicesPage() {
   const fetchServices = async () => {
     try {
       const token = getToken();
-      const res = await fetch("http://localhost:5001/admin/services", {
+      const res = await fetch(apiUrl("/admin/services"), {
         headers: { Authorization: `Bearer ${token}` },
       }); 
       const data = await res.json();
@@ -82,7 +83,7 @@ export default function AdminServicesPage() {
       async () => {
         try {
           const res = await fetch(
-            `http://localhost:5001/admin/services/${service.id}/${action}`,
+            apiUrl(`/admin/services/${service.id}/${action}`),
             {
               method: "PUT",
               headers: { Authorization: `Bearer ${getToken()}` },
@@ -119,7 +120,7 @@ export default function AdminServicesPage() {
           onClick={() => router.back()}
           className="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
         >
-          ← Back
+          â† Back
         </button>
 
         <div className="text-center mb-6">

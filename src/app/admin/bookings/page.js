@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import { apiUrl } from "@/lib/apiConfig";
 import { useEffect, useState } from "react";
 import AdminSidebar from "../../../components/AdminSidebar";
 import { clearAuthSession, getToken } from "@/lib/authStorage";
@@ -45,7 +46,7 @@ const handlePrevPage = () => {
 };
  
   const fetchBookings = (authToken) => {
-    fetch("http://localhost:5001/admin/bookings", {
+    fetch(apiUrl("/admin/bookings"), {
       headers: {
         Authorization: `Bearer ${authToken}`,
       },
@@ -80,7 +81,7 @@ const handlePrevPage = () => {
     );
     setBookings(updatedBookings);
  
-    fetch(`http://localhost:5001/admin/bookings/${id}/status`, {
+    fetch(apiUrl(`/admin/bookings/${id}/status`), {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -112,6 +113,12 @@ const handlePrevPage = () => {
 
   const formatDate = (date) => new Date(date).toLocaleDateString();
   const formatTime = (time) => time?.slice(0, 5);
+  const getBookingTitle = (booking) =>
+    booking.custom_service_names
+      ? `Custom Services: ${booking.custom_service_names}`
+      : booking.package || booking.service || "Service booking";
+  const getBookingAmount = (booking) =>
+    booking.custom_service_price || booking.package_price || booking.service_price || "0";
 
   if (!mounted) return null;
 
@@ -160,7 +167,7 @@ const handlePrevPage = () => {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Booking #{b.id}</p>
-                    <h2 className="mt-3 text-lg font-semibold text-slate-900">{b.package || b.service || "Service booking"}</h2>
+                    <h2 className="mt-3 text-lg font-semibold text-slate-900">{getBookingTitle(b)}</h2>
                   </div>
                   <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
                     b.status === "completed"
@@ -190,7 +197,7 @@ const handlePrevPage = () => {
                   </div>
                   <div className="rounded-2xl bg-slate-50 px-4 py-3">
                     <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Amount</p>
-                    <p className="mt-2 text-sm font-semibold text-emerald-700">{b.package_price || b.service_price || "0"}</p>
+                    <p className="mt-2 text-sm font-semibold text-emerald-700">{getBookingAmount(b)}</p>
                   </div>
                 </div>
 
@@ -245,12 +252,12 @@ const handlePrevPage = () => {
                   </div>
                   <div className="rounded-3xl bg-slate-50 p-6">
                     <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Booking</p>
-                    <p className="mt-3 text-lg font-semibold text-slate-900">{selectedBooking.package || selectedBooking.service}</p>
+                    <p className="mt-3 text-lg font-semibold text-slate-900">{getBookingTitle(selectedBooking)}</p>
                     <p className="mt-1 text-sm text-slate-500">{selectedBooking.booking_date} at {formatTime(selectedBooking.booking_time)}</p>
                   </div>
                   <div className="rounded-3xl bg-slate-50 p-6">
                     <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Amount</p>
-                    <p className="mt-3 text-2xl font-bold text-emerald-700">{selectedBooking.service_price || selectedBooking.package_price || "0"}</p>
+                    <p className="mt-3 text-2xl font-bold text-emerald-700">{getBookingAmount(selectedBooking)}</p>
                   </div>
                   <div className="rounded-3xl bg-slate-50 p-6">
                     <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Status</p>

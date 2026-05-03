@@ -1,5 +1,6 @@
-"use client";
+﻿"use client";
 
+import { apiUrl } from "@/lib/apiConfig";
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import AdminSidebar from "@/components/AdminSidebar";
@@ -27,7 +28,7 @@ export default function EditPackagePage() {
   const token = getToken();
  
   useEffect(() => {
-    fetch("http://localhost:5001/services")
+    fetch(apiUrl("/services"))
       .then((res) => res.json())
       .then((data) => setServices(Array.isArray(data) ? data : []))
       .catch(() => setServices([]));
@@ -38,7 +39,7 @@ export default function EditPackagePage() {
 
     const fetchPackage = async () => {
       try {
-        const res = await fetch(`http://localhost:5001/admin/packages/${id}`, {
+        const res = await fetch(apiUrl(`/admin/packages/${id}`), {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -63,7 +64,7 @@ export default function EditPackagePage() {
 
         if (data.image) {
           setImage(data.image);
-          setPreview(`http://localhost:5001/uploads/${data.image}`);
+          setPreview(apiUrl(`/uploads/${data.image}`));
         }
 
         setLoading(false);
@@ -122,7 +123,7 @@ export default function EditPackagePage() {
         formData.append("image", image);
       }
 
-      const res = await fetch(`http://localhost:5001/admin/packages/${id}`, {
+      const res = await fetch(apiUrl(`/admin/packages/${id}`), {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,

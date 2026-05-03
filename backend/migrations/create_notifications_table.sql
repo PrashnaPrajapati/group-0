@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   user_id INT NOT NULL,
   title VARCHAR(255) NOT NULL,
   message TEXT NOT NULL,
-  type ENUM('booking', 'cancellation', 'reminder', 'admin_alert') NOT NULL,
+  type ENUM('booking', 'cancellation', 'reminder', 'admin_alert', 'chat_message') NOT NULL,
   is_read BOOLEAN DEFAULT FALSE,
   related_id INT NULL, -- Can reference booking_id, service_id, etc.
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
