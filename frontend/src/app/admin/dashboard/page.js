@@ -1,0 +1,442 @@
+﻿"use client";
+
+import { apiUrl } from "@/lib/apiConfig";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import AdminSidebar from "@/components/AdminSidebar";
+import { getRole, getToken } from "@/lib/authStorage";
+import { notify } from "@/lib/notify";
+import { createSafeFetch } from "@/lib/safeFetch";
+
+import {
+  AreaChart, Area,
+  BarChart, Bar,
+  PieChart, Pie,
+  XAxis, YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+
+const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function fillMonthlyData(apiData) {
+  const year = apiData.length > 0
+    ? apiData[0].month.split("-")[0]
+    : new Date().getFullYear().toString();
+
+  const lookup = {};
+  apiData.forEach(item => { lookup[item.month] = item; });
+
+  return MONTH_LABELS.map((label, i) => {
+    const key = `${year}-${String(i + 1).padStart(2, "0")}`;
+    return {
+      month: label,
+      bookings: lookup[key]?.bookings || 0,
+      revenue: lookup[key]?.revenue || 0,
+    };
+  });
+}
+
+function getTopServicesByBookings(services, bookings) {
+  const bookingCountsByService = bookings.reduce((counts, booking) => {
+    const serviceName = booking.service || booking.service_name;
+    if (!serviceName) return counts;
+
+    counts[serviceName] = (counts[serviceName] || 0) + 1;
+    return counts;
+  }, {});
+
+  return services
+    .map((service) => ({
+      ...service,
+      bookingCount: Number(
+        service.booking_count ?? bookingCountsByService[service.name] ?? 0
+      ),
+    }))
+    .sort(
+      (a, b) =>
+        b.bookingCount - a.bookingCount || (b.rating || 0) - (a.rating || 0)
+    )
+    .slice(0, 5);
+}
+
+function getTopPackagesByBookings(packages, bookings) {
+  const bookingCountsByPackage = bookings.reduce((counts, booking) => {
+    const packageName = booking.package || booking.package_name;
+    if (!packageName) return counts;
+
+    counts[packageName] = (counts[packageName] || 0) + 1;
+    return counts;
+  }, {});
+
+  return packages
+    .map((pkg) => ({
+      ...pkg,
+      services: pkg.services?.map((service) => service.name) || [],
+      bookingCount: Number(
+        pkg.booking_count ?? bookingCountsByPackage[pkg.name] ?? 0
+      ),
+    }))
+    .sort(
+      (a, b) =>
+        b.bookingCount - a.bookingCount || (b.rating || 0) - (a.rating || 0)
+    )
+    .slice(0, 5);
+}
+
+function formatCountLabel(count, singular, plural = `${singular}s`) {
+  const numericCount = Number(count || 0);
+  return `${numericCount} ${numericCount === 1 ? singular : plural}`;
+}
+
+export default function AdminDashboard() {
+  const router = useRouter();
+  const { safeFetch } = createSafeFetch(router);
+
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("services");
+
+  const [monthlyData, setMonthlyData] = useState([]);
+  const [categoryData, setCategoryData] = useState([]);
+  const [sentimentData, setSentimentData] = useState([]);
+
+  const [servicesList, setServicesList] = useState([]);
+  const [packagesList, setPackagesList] = useState([]);
+  const [bookingsList, setBookingsList] = useState([]);
+  const [reviewList, setReviewList] = useState([]);
+
+  const COLORS = ["#ec4899", "#a855f7", "#6366f1", "#14b8a6", "#facc15"];
+
+
+  const renderPieLabel = (entry, index, data) => {
+    const total = data.reduce((sum, item) => sum + (item.value || item.count), 0);
+    const percent = total ? ((entry.value || entry.count) / total * 100).toFixed(1) : 0;
+    return `${entry.name || entry.sentiment}: ${percent}%`;
+  };
+
+  useEffect(() => {
+    const token = getToken();
+    const role = getRole();
+    if (!token) return router.replace("/login"); 
+    if (role !== "admin") return router.replace("/dashboard");
+ 
+    const fetchDashboard = async () => {
+      try {
+        const res = await fetch(apiUrl("/admin/stats"), {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        setStats(data);
+      } catch (err) {
+        console.error(err);
+        notify.error("Failed to load stats");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const fetchCharts = async () => {
+      const [monthly, category, sentiment] = await Promise.all([
+        safeFetch(apiUrl("/admin/monthly-stats"), token),
+        safeFetch(apiUrl("/admin/service-categories"), token),
+        safeFetch(apiUrl("/admin/ai-sentiment"), token),
+      ]);
+
+      console.log("admin monthly stats", monthly);
+      console.log("admin category stats", category);
+      console.log("admin sentiment stats", sentiment);
+
+      const coloredCategory = category.map((item, i) => ({ ...item, fill: COLORS[i % COLORS.length] }));
+      const coloredSentiment = sentiment.map((item, i) => ({ ...item, fill: COLORS[i % COLORS.length] }));
+
+      setMonthlyData(fillMonthlyData(monthly));
+      setCategoryData(coloredCategory);
+      setSentimentData(coloredSentiment);
+    };
+
+    const fetchTabData = async () => {
+      const [services, packages, bookings, review] = await Promise.all([
+        safeFetch(apiUrl("/services"), token),
+        safeFetch(apiUrl("/packages"), token),
+        safeFetch(apiUrl("/admin/bookings"), token),
+        safeFetch(apiUrl("/review"), token),
+        
+      ]);
+ 
+      setServicesList(getTopServicesByBookings(services, bookings));
+
+      setPackagesList(getTopPackagesByBookings(packages, bookings));
+
+      setBookingsList(bookings.slice(0,5));
+      setReviewList(review.slice(0, 5));
+    };
+
+    fetchDashboard();
+    fetchCharts();
+    fetchTabData();
+  }, [router]);
+
+  if (loading) return <div className="p-10 text-center text-gray-500">Loading dashboard...</div>;
+
+  return (
+    <AdminSidebar>
+      <div className="space-y-8 pl-16 sm:pl-20">
+        <div className="flex flex-col gap-1 text-gray-600">
+          <p className="text-2xl font-bold">Welcome back, Admin!</p>
+          <p className="text-md">Manage your services, bookings, and analytics</p>
+        </div>
+ 
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <Card title="Total Services" value={stats?.totalServices} />
+          <Card title="Total Packages" value={stats?.totalPackages} />
+          <Card title="Total Bookings" value={stats?.totalBookings} />
+          <Card
+            title="Users & Admins"
+            value={stats?.totalUsers}
+            details={[
+              formatCountLabel(stats?.totalCustomers || 0, "User"),
+              formatCountLabel(stats?.totalAdmins || 0, "Admin"),
+            ]}
+          />
+        </div> 
+        <div className="grid md:grid-cols-2 gap-8 mt-6">
+
+          <ChartCard title={<span style={{ color: '#000000' }}>Monthly Bookings</span>}>
+            <ResponsiveContainer width="100%" height={250}>
+              <AreaChart data={monthlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="bookingsGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#ec4899" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#ec4899" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                <XAxis
+                  dataKey="month"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: '#666', fontSize: 12 }}
+                  padding={{ left: 20, right: 20 }}
+                />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#666', fontSize: 12 }} />
+                <Tooltip />
+                <Area
+                  type="monotone"
+                  dataKey="bookings"
+                  stroke="#ec4899"
+                  strokeWidth={3}
+                  fill="url(#bookingsGradient)"
+                  dot={{ r: 4, fill: "#ec4899", stroke: "#ffffff", strokeWidth: 2 }}
+                  activeDot={{ r: 6, fill: "#ec4899", stroke: "#ffffff", strokeWidth: 2 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </ChartCard>
+
+          <ChartCard title={<span style={{ color: '#000000' }}>Monthly Revenue</span>}>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="revenue" fill="#a855f7" />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
+          
+          <ChartCard title={<span style={{ color: '#000000' }}>Bookings by Service Category</span>}>
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie
+                  data={categoryData}
+                  dataKey="value"
+                  nameKey="name"
+                  outerRadius={100}
+                  label={(entry,index)=>renderPieLabel(entry,index,categoryData)}
+                />
+                <Tooltip formatter={value => [value,"Services"]} />
+              </PieChart>
+            </ResponsiveContainer>
+          </ChartCard>
+
+          <ChartCard title={<span style={{ color: "#000000" }}>Review Sentiment</span>}>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={sentimentData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="sentiment" />
+                <YAxis />
+                <Tooltip formatter={value => [value, "Reviews"]} />
+                <Bar dataKey="count" fill="#ec4899" />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard> 
+        </div>
+ 
+        <div className="bg-gray-100 rounded-full p-2 flex md:w-3/4 mx-auto mt-8 text-gray-600">
+          {["services","packages","bookings","review"].map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 py-2 rounded-full ${activeTab===tab?"bg-white shadow":"hover:bg-gray-200"}`}
+            >
+              {tab.charAt(0).toUpperCase()+tab.slice(1)}
+            </button>
+          ))}
+        </div> 
+          <div className="text-pink-400">
+            {activeTab === "services" && (
+              <TabContent title="Top 5 Services" items={servicesList} type="services" />
+            )}
+            {activeTab === "packages" && (
+              <TabContent title="Top 5 Packages" items={packagesList} type="packages" />
+            )}
+            {activeTab === "bookings" && (
+              <TabContent title="Recent 5 Bookings" items={bookingsList} type="bookings" />
+            )}
+            {activeTab === "review" && (
+              <TabContent title="Recent 5 Reviews" items={reviewList} type="review" />
+            )}
+          </div>
+                </div>
+              </AdminSidebar>
+            );
+          }
+ 
+function Card({ title, value, details = [] }) {
+  return (
+    <div className="rounded-lg border border-pink-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-gray-500">{title}</p>
+          <p className="mt-2 text-3xl font-bold text-gray-900">{value || 0}</p>
+          {details.length > 0 && (
+            <p className="mt-1 text-xs font-medium text-gray-500">
+              {details.join(" / ")}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+ 
+function ChartCard({ title, children }) {
+  return (
+    <div className="bg-white p-6 rounded-xl shadow">
+      <h3 className="font-semibold mb-4">{title}</h3>
+      {children}
+    </div>
+  );
+}
+ 
+function TabContent({ title, items, type }) {
+  if (!items || items.length === 0) {
+    return <div className="bg-white p-10 rounded-xl shadow text-center text-gray-500 mt-6">No data found.</div>;
+  }
+
+  return (
+    <div className="bg-white p-6 rounded-xl shadow-[0_4px_6px_-1px_rgba(236,72,153,0.4),0_2px_4px_-1px_rgba(236,72,153,0.06)] mt-6">
+      <h3 className="text-xl font-semibold mb-4">{title}</h3>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm text-gray-600 border-separate border-spacing-0">
+          <thead className="bg-pink-50 text-gray-700">
+            <tr>
+              {type === "services" && <>
+                <th className="p-3">Name</th>
+                <th className="p-3">Category</th>
+                <th className="p-3">Price</th>
+                <th className="p-3">Duration</th>
+                <th className="p-3">Bookings</th>
+              </>}
+              {type === "packages" && <>
+                <th className="p-3">Name</th>
+                <th className="p-3">Price</th>
+                <th className="p-3">Services Included</th>
+                <th className="p-3">Bookings</th>
+              </>}
+              {type === "bookings" && <>
+                <th className="p-3">Service/Package</th>
+                <th className="p-3">Customer</th>
+                <th className="p-3">Date</th>
+                <th className="p-3">Status</th>
+                <th className="p-3">Amount</th>
+              </>}
+              {type === "review" && <>
+                <th className="p-3">Customer</th>
+                <th className="p-3">Review</th>
+                <th className="p-3">Rating</th>
+              </>}
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item, index) => (
+              <tr key={index} className="border-t">
+                {type === "services" && <>
+                  <td className="p-3 font-medium text-gray-700">{item.name}</td>
+                  <td className="p-3 text-gray-600">{item.category}</td>
+                  <td className="p-3 text-gray-600 ">Rs. {item.price}</td>
+                  <td className="p-3 text-gray-600">{item.duration}</td>
+                  <td className="p-3 text-gray-600">{item.bookingCount || 0}</td>
+                </>}
+                {type === "packages" && <>
+                  <td className="p-3 font-medium text-gray-700">{item.name}</td>
+                  <td className="p-3 text-gray-600 ">Rs. {item.price}</td>
+                  <td className="p-3 text-gray-600">{item.services?.join(", ")}</td>
+                  <td className="p-3 text-gray-600">{item.bookingCount || 0}</td>
+                </>}
+                {type === "bookings" && <>
+                  <td className="p-3 text-gray-600">
+                    {item.service || item.package || item.service_name || item.package_name || "-"}
+                  </td>
+                  <td className="p-3 text-gray-600">{item.user || "-"}</td>
+                  <td className="p-3 text-gray-600">
+                    {item.booking_date ? new Date(item.booking_date).toLocaleDateString() : "-"}
+                  </td>
+                  <td className="p-3 text-gray-600">
+                    <select
+                      value={item.status}
+                      onChange={(e) => {
+                        const newStatus = e.target.value;
+                        const updatedBookings = [...items];
+                        updatedBookings[index] = {...item, status: newStatus};
+                        items = updatedBookings; 
+                        fetch(apiUrl(`/admin/bookings/${item.id}/status`), {
+                          method: "PUT",
+                          headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${getToken()}`,
+                          },
+                          body: JSON.stringify({ status: newStatus }),
+                        }).catch(err => console.error("Failed to update status:", err));
+                      }}
+                      className={`border rounded px-2 py-1 ${
+                        item.status === "upcoming" ? "text-blue-600 border-blue-200" :
+                        item.status === "completed" ? "text-green-600 border-green-200" :
+                        item.status === "missed" ? "text-amber-600 border-amber-200" :
+                        "text-red-600 border-red-200"
+                      }`}
+                    >
+                      <option value="upcoming">Upcoming</option>
+                      <option value="completed">Completed</option>
+                      <option value="missed">Missed</option>
+                    </select>
+                  </td>
+                  <td className="p-3 text-gray-600 font-semibold">{item.service_price || item.package_price || 0}</td>
+                </>}
+                {type === "review" && <>
+                  <td className="p-3 font-medium">{item.customer}</td>
+                  <td className="p-3">{item.review}</td>
+                  <td className="p-3">{item.rating || "-"}</td>
+                </>}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

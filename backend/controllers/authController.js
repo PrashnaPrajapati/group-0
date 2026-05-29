@@ -117,8 +117,8 @@ const sendLoginLockEmail = async (user) => {
 };
 
 const sendVerificationEmail = async (user, token) => {
-  const apiBaseUrl = process.env.BACKEND_URL || "http://localhost:5001";
-  const verificationLink = `${apiBaseUrl}/verify-email?token=${token}`;
+  const frontendBaseUrl = (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/$/, "");
+  const verificationLink = `${frontendBaseUrl}/verify-email?token=${encodeURIComponent(token)}`;
 
   await transporter.sendMail({
     from: process.env.EMAIL_USER,
@@ -235,12 +235,9 @@ const login = async (req, res) => {
       return res.status(401).json({ message: "User not found" });
     }
 
-    if (user.blocked) {
-      const reason = user.blockedReason?.trim();
+    if (user.blocked) { 
       return res.status(403).json({
-        message: reason
-          ? `You have been blocked due to ${reason}.`
-          : "You have been blocked. Please contact support.",
+        message: "Your account has been blocked. Please contact support.",
       });
     }
 
@@ -413,20 +410,20 @@ const verifyEmail = async (req, res) => {
     const { token } = req.query;
 
     if (!token) {
-      return res.status(400).send("Verification token is required.");
+      return res.status(400).json({ message: "Verification token is required." });
     }
 
     const user = await User.findByValidEmailVerificationToken(token);
     if (!user) {
-      return res.status(400).send("Invalid or expired verification link.");
+      return res.status(400).json({ message: "Invalid or expired verification link." });
     }
 
     await User.verifyEmail(user.id);
 
-    return res.send("Email verified successfully. You can now log in.");
+    return res.json({ message: "Email verified successfully. You can now log in." });
   } catch (err) {
     console.error(err);
-    return res.status(500).send("Server error.");
+    return res.status(500).json({ message: "Server error." });
   }
 };
 

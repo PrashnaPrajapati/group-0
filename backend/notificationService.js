@@ -191,18 +191,93 @@ class NotificationService {
     }
   }
 
+  async notifyBookingConfirmed(bookingData) {
+    try {
+      const { userId, bookingId, itemName, bookingDate, bookingTime } = bookingData;
+      const alreadySent = await NotificationManager.notificationExists(
+        userId,
+        "booking_confirmed",
+        bookingId
+      );
+      if (alreadySent) return false;
+
+      const title = "Booking Confirmed";
+      const message = `${itemName || "Your booking"} is confirmed for ${bookingDate} at ${bookingTime}.`;
+
+      await this.sendNotificationToUser(userId, title, message, "booking_confirmed", bookingId);
+      return true;
+    } catch (error) {
+      console.error("Error sending booking confirmed notification:", error);
+      return false;
+    }
+  }
+
+  async notifyUserBookingReceived(bookingData) {
+    try {
+      const { userId, bookingId, itemName, bookingDate, bookingTime } = bookingData;
+      const alreadySent = await NotificationManager.notificationExists(
+        userId,
+        "booking_received",
+        bookingId
+      );
+      if (alreadySent) return;
+
+      const title = "Booking Received";
+      const message = `${itemName || "Your booking"} has been received for ${bookingDate} at ${bookingTime}.`;
+
+      await this.sendNotificationToUser(userId, title, message, "booking_received", bookingId);
+    } catch (error) {
+      console.error("Error sending booking received notification:", error);
+    }
+  }
+
   // Trigger reminder notification for upcoming service
   async notifyUpcomingService(bookingData) {
     try {
       const { userId, bookingId, serviceName, packageName, bookingDate, bookingTime } = bookingData;
+
+      const reminderAlreadySent = await NotificationManager.notificationExists(
+        userId,
+        "reminder",
+        bookingId
+      );
+      if (reminderAlreadySent) {
+        return false;
+      }
 
       const itemName = serviceName || packageName;
       const title = "Upcoming Service Reminder";
       const message = `Your ${itemName} service is scheduled for tomorrow at ${bookingTime}`;
 
       await this.sendNotificationToUser(userId, title, message, "reminder", bookingId);
+      return true;
     } catch (error) {
       console.error("Error sending reminder notification:", error);
+      return false;
+    }
+  }
+
+  async notifyBookingCompleted(bookingData) {
+    try {
+      const { userId, bookingId } = bookingData;
+      const title = "Service Completed";
+      const message = "Your booking has been completed. You can now share private feedback or leave a review.";
+
+      await this.sendNotificationToUser(userId, title, message, "booking_completed", bookingId);
+    } catch (error) {
+      console.error("Error sending completed booking notification:", error);
+    }
+  }
+
+  async notifyBookingMissed(bookingData) {
+    try {
+      const { userId, bookingId } = bookingData;
+      const title = "Booking Marked Missed";
+      const message = "Your booking was marked as missed. You can book the service again for another time.";
+
+      await this.sendNotificationToUser(userId, title, message, "booking_missed", bookingId);
+    } catch (error) {
+      console.error("Error sending missed booking notification:", error);
     }
   }
 
@@ -233,9 +308,9 @@ class NotificationService {
       // Get all upcoming bookings for tomorrow
       const bookings = await this.getUpcomingBookingsForDate(tomorrowStr);
 
+      let sentCount = 0;
       for (const booking of bookings) {
-        // Check if reminder already sent (we can add a flag in the future)
-        await this.notifyUpcomingService({
+        const sent = await this.notifyUpcomingService({
           userId: booking.user_id,
           bookingId: booking.id,
           serviceName: booking.service_name,
@@ -243,10 +318,11 @@ class NotificationService {
           bookingDate: booking.booking_date,
           bookingTime: booking.booking_time
         });
+        if (sent) sentCount += 1;
       }
 
-      if (bookings.length > 0) {
-        console.log(`Sent ${bookings.length} reminder notifications for tomorrow`);
+      if (sentCount > 0) {
+        console.log(`Sent ${sentCount} reminder notifications for tomorrow`);
       }
     } catch (error) {
       console.error("Error checking upcoming services:", error);

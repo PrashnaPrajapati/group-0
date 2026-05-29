@@ -1,159 +1,138 @@
 const db = require("./db");
 
-class NotificationManager { 
-  static createNotification(userId, title, message, type, relatedId = null) {
-    return new Promise((resolve, reject) => {
-      db.query(
-        "INSERT INTO notifications (user_id, title, message, type, related_id) VALUES (?, ?, ?, ?, ?)",
-        [userId, title, message, type, relatedId],
-        (err, result) => {
-          if (err) {
-            console.error("Error creating notification:", err);
-            reject(err);
-          } else {
-            resolve(result.insertId);
-          }
-        }
-      );
-    });
-  }
- 
-  static getNotifications(userId, limit = 50) {
-    return new Promise((resolve, reject) => {
-      db.query(
-        "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
-        [userId, limit],
-        (err, results) => {
-          if (err) {
-            console.error("Error fetching notifications:", err);
-            reject(err);
-          } else {
-            resolve(results);
-          }
-        }
-      );
-    });
-  }
- 
-  static markAsRead(notificationId, userId) {
-    return new Promise((resolve, reject) => {
-      db.query(
-        "UPDATE notifications SET is_read = TRUE WHERE id = ? AND user_id = ?",
-        [notificationId, userId],
-        (err, result) => {
-          if (err) {
-            console.error("Error marking notification as read:", err);
-            reject(err);
-          } else {
-            resolve(result.affectedRows > 0);
-          }
-        }
-      );
-    });
-  }
- 
-  static markAllAsRead(userId) {
-    return new Promise((resolve, reject) => {
-      db.query(
-        "UPDATE notifications SET is_read = TRUE WHERE user_id = ? AND is_read = FALSE",
-        [userId],
-        (err, result) => {
-          if (err) {
-            console.error("Error marking all notifications as read:", err);
-            reject(err);
-          } else {
-            resolve(result.affectedRows);
-          }
-        }
-      );
-    });
+class NotificationManager {
+  static async ensureNotificationsTable() {
+    await db.promise().query(
+      `CREATE TABLE IF NOT EXISTS notifications (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        message TEXT NOT NULL,
+        type VARCHAR(50) NOT NULL,
+        related_id INT NULL,
+        is_read BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_notifications_user_read (user_id, is_read),
+        INDEX idx_notifications_type_related (type, related_id)
+      )`
+    );
+
+    try {
+      await db.promise().query("ALTER TABLE notifications MODIFY type VARCHAR(50) NOT NULL");
+      await db.promise().query("ALTER TABLE notifications MODIFY related_id INT NULL");
+      await db.promise().query("ALTER TABLE notifications MODIFY is_read BOOLEAN DEFAULT FALSE");
+    } catch (error) {
+      console.error("Error updating notifications table schema:", error.message);
+    }
   }
 
-  static markChatNotificationsAsRead(userId, conversationUserId, userRole) {
-    return new Promise((resolve, reject) => {
-      const messageFilter =
-        userRole === "admin"
-          ? "senderId = ?"
-          : "senderId = ? AND receiverId = ?";
-      const params =
-        userRole === "admin"
-          ? [userId, conversationUserId]
-          : [userId, conversationUserId, userId];
+  static async createNotification(userId, title, message, type, relatedId = null) {
+    await this.ensureNotificationsTable();
+    const [result] = await db.promise().query(
+      "INSERT INTO notifications (user_id, title, message, type, related_id) VALUES (?, ?, ?, ?, ?)",
+      [userId, title, message, type, relatedId]
+    );
 
-      db.query(
-        `SELECT id FROM notifications
-         WHERE user_id = ?
-           AND type = 'chat_message'
-           AND is_read = FALSE
-           AND related_id IN (
-             SELECT id FROM messages WHERE ${messageFilter}
-           )`,
-        params,
-        (selectErr, notifications) => {
-          if (selectErr) {
-            console.error("Error finding chat notifications:", selectErr);
-            reject(selectErr);
-            return;
-          }
-
-          const notificationIds = (notifications || []).map((row) => row.id);
-          if (notificationIds.length === 0) {
-            resolve({ affectedRows: 0, notificationIds: [] });
-            return;
-          }
-
-          db.query(
-            "UPDATE notifications SET is_read = TRUE WHERE user_id = ? AND id IN (?)",
-            [userId, notificationIds],
-            (updateErr, result) => {
-              if (updateErr) {
-                console.error("Error marking chat notifications as read:", updateErr);
-                reject(updateErr);
-              } else {
-                resolve({
-                  affectedRows: result.affectedRows,
-                  notificationIds,
-                });
-              }
-            }
-          );
-        }
-      );
-    });
+    return result.insertId;
   }
- 
-  static getUnreadCount(userId) {
-    return new Promise((resolve, reject) => {
-      db.query(
-        "SELECT COUNT(*) as unread_count FROM notifications WHERE user_id = ? AND is_read = FALSE",
-        [userId],
-        (err, results) => {
-          if (err) {
-            console.error("Error getting unread count:", err);
-            reject(err);
-          } else {
-            resolve(results[0].unread_count);
-          }
-        }
-      );
-    });
+
+  static async notificationExists(userId, type, relatedId) {
+    await this.ensureNotificationsTable();
+    const [rows] = await db.promise().query(
+      "SELECT id FROM notifications WHERE user_id = ? AND type = ? AND related_id <=> ? LIMIT 1",
+      [userId, type, relatedId]
+    );
+
+    return Boolean(rows[0]);
   }
- 
-  static deleteOldNotifications(daysOld = 30) {
-    return new Promise((resolve, reject) => {
-      db.query(
-        "DELETE FROM notifications WHERE created_at < DATE_SUB(NOW(), INTERVAL ? DAY)",
-        [daysOld],
-        (err, result) => {
-          if (err) {
-            console.error("Error deleting old notifications:", err);
-            reject(err);
-          } else {
-            resolve(result.affectedRows);
-          }
-        }
-      );
-    });
+
+  static async getNotifications(userId, limit = 50) {
+    await this.ensureNotificationsTable();
+    const [rows] = await db.promise().query(
+      "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
+      [userId, limit]
+    );
+
+    return rows;
+  }
+
+  static async markAsRead(notificationId, userId) {
+    await this.ensureNotificationsTable();
+    const [result] = await db.promise().query(
+      "UPDATE notifications SET is_read = TRUE WHERE id = ? AND user_id = ?",
+      [notificationId, userId]
+    );
+
+    return result.affectedRows > 0;
+  }
+
+  static async markAllAsRead(userId) {
+    await this.ensureNotificationsTable();
+    const [result] = await db.promise().query(
+      "UPDATE notifications SET is_read = TRUE WHERE user_id = ? AND is_read = FALSE",
+      [userId]
+    );
+
+    return result.affectedRows;
+  }
+
+  static async markChatNotificationsAsRead(userId, conversationUserId, userRole) {
+    await this.ensureNotificationsTable();
+
+    const messageFilter =
+      userRole === "admin"
+        ? "senderId = ?"
+        : "senderId = ? AND receiverId = ?";
+    const params =
+      userRole === "admin"
+        ? [userId, conversationUserId]
+        : [userId, conversationUserId, userId];
+
+    const [notifications] = await db.promise().query(
+      `SELECT id FROM notifications
+       WHERE user_id = ?
+         AND type = 'chat_message'
+         AND is_read = FALSE
+         AND related_id IN (
+           SELECT id FROM messages WHERE ${messageFilter}
+         )`,
+      params
+    );
+
+    const notificationIds = (notifications || []).map((row) => row.id);
+    if (notificationIds.length === 0) {
+      return { affectedRows: 0, notificationIds: [] };
+    }
+
+    const [result] = await db.promise().query(
+      "UPDATE notifications SET is_read = TRUE WHERE user_id = ? AND id IN (?)",
+      [userId, notificationIds]
+    );
+
+    return {
+      affectedRows: result.affectedRows,
+      notificationIds,
+    };
+  }
+
+  static async getUnreadCount(userId) {
+    await this.ensureNotificationsTable();
+    const [rows] = await db.promise().query(
+      "SELECT COUNT(*) as unread_count FROM notifications WHERE user_id = ? AND is_read = FALSE",
+      [userId]
+    );
+
+    return rows[0]?.unread_count || 0;
+  }
+
+  static async deleteOldNotifications(daysOld = 30) {
+    await this.ensureNotificationsTable();
+    const [result] = await db.promise().query(
+      "DELETE FROM notifications WHERE created_at < DATE_SUB(NOW(), INTERVAL ? DAY)",
+      [daysOld]
+    );
+
+    return result.affectedRows;
   }
 }
 

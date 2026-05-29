@@ -277,7 +277,33 @@ const initializeChat = (io, notificationService = null) => {
         }
 
         db.query(
-          `SELECT id, fullName, photoUrl, gender FROM users WHERE role = 'users' ORDER BY fullName`,
+          `SELECT
+             u.id,
+             u.fullName,
+             u.photoUrl,
+             u.gender,
+             latest.lastMessageAt,
+             latest.lastMessage
+           FROM users u
+           LEFT JOIN (
+             SELECT
+               conversation.userId,
+               MAX(m.timestamp) AS lastMessageAt,
+               SUBSTRING_INDEX(
+                 GROUP_CONCAT(m.message ORDER BY m.timestamp DESC SEPARATOR '|||'),
+                 '|||',
+                 1
+               ) AS lastMessage
+             FROM (
+               SELECT senderId AS userId, id FROM messages WHERE senderId IN (SELECT id FROM users WHERE role = 'users')
+               UNION ALL
+               SELECT receiverId AS userId, id FROM messages WHERE receiverId IN (SELECT id FROM users WHERE role = 'users')
+             ) conversation
+             JOIN messages m ON m.id = conversation.id
+             GROUP BY conversation.userId
+           ) latest ON latest.userId = u.id
+           WHERE u.role = 'users'
+           ORDER BY latest.lastMessageAt IS NULL, latest.lastMessageAt DESC, u.fullName ASC`,
           (err, results) => {
             if (err) {
               console.error("Error fetching users:", err);
