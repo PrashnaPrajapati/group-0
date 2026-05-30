@@ -1,9 +1,10 @@
-const NotificationManager = require("../notificationManager");
+const NotificationManager = require("../services/notificationManager");
+const { parsePositiveInt } = require("../utils/sql");
 
 const getNotifications = async (req, res) => {
   try {
     const userId = req.user.id;
-    const limit = parseInt(req.query.limit, 10) || 50;
+    const limit = Math.min(100, parsePositiveInt(req.query.limit, 50));
 
     const notifications = await NotificationManager.getNotifications(userId, limit);
     res.json(notifications);

@@ -65,7 +65,7 @@ export default function EditPackagePage() {
 
         if (data.image) {
           setImage(data.image);
-          setPreview(apiUrl(`/uploads/packages/${data.image}`));
+          setPreview(apiUrl(data.image.startsWith("http") ? data.image : `/uploads/packages/${data.image}`));
         }
 
         setLoading(false);

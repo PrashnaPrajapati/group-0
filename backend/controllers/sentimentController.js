@@ -46,16 +46,8 @@ const getAiSentimentDetails = async (req, res) => {
     const offset = (page - 1) * limit;
     const search = (req.query.search || "").trim();
 
-    let whereClause = "WHERE f.feedback_text IS NOT NULL AND TRIM(f.feedback_text) <> ''";
-    const params = [];
-
-    if (search) {
-      whereClause += " AND (u.fullname LIKE ? OR f.feedback_text LIKE ?)";
-      params.push(`%${search}%`, `%${search}%`);
-    }
-
-    const total = await Sentiment.countSentimentDetails({ search, whereClause, params });
-    const reviewRows = await Sentiment.findSentimentDetails({ whereClause, params, limit, offset });
+    const total = await Sentiment.countSentimentDetails({ search });
+    const reviewRows = await Sentiment.findSentimentDetails({ search, limit, offset });
 
     const details = reviewRows.map((entry) => {
       const text = (entry.review || "").trim();

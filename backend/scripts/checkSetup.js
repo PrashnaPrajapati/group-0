@@ -1,4 +1,4 @@
-const db = require('./db');
+const db = require('../db');
 
 console.log('\n🔍 Checking Chat System Setup...\n');
  

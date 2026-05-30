@@ -97,7 +97,7 @@ const updateProfilePhoto = async (req, res) => {
       return res.status(400).json({ message: "No file uploaded" });
     }
 
-    const photoPath = `/uploads/${req.file.filename}`;
+    const photoPath = req.file.imageUrl;
     console.log("Saving photo path to DB:", photoPath, "for user:", req.user.id);
 
     const existingProfile = await Profile.findById(req.user.id);

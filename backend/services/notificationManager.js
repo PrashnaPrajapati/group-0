@@ -1,4 +1,5 @@
-const db = require("./db");
+const db = require("../db");
+const { parsePositiveInt } = require("../utils/sql");
 
 class NotificationManager {
   static async ensureNotificationsTable() {
@@ -48,9 +49,10 @@ class NotificationManager {
 
   static async getNotifications(userId, limit = 50) {
     await this.ensureNotificationsTable();
+    const safeLimit = Math.min(100, parsePositiveInt(limit, 50));
     const [rows] = await db.promise().query(
       "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
-      [userId, limit]
+      [userId, safeLimit]
     );
 
     return rows;
@@ -79,25 +81,28 @@ class NotificationManager {
   static async markChatNotificationsAsRead(userId, conversationUserId, userRole) {
     await this.ensureNotificationsTable();
 
-    const messageFilter =
+    const [notifications] =
       userRole === "admin"
-        ? "senderId = ?"
-        : "senderId = ? AND receiverId = ?";
-    const params =
-      userRole === "admin"
-        ? [userId, conversationUserId]
-        : [userId, conversationUserId, userId];
-
-    const [notifications] = await db.promise().query(
-      `SELECT id FROM notifications
-       WHERE user_id = ?
-         AND type = 'chat_message'
-         AND is_read = FALSE
-         AND related_id IN (
-           SELECT id FROM messages WHERE ${messageFilter}
-         )`,
-      params
-    );
+        ? await db.promise().query(
+            `SELECT id FROM notifications
+             WHERE user_id = ?
+               AND type = 'chat_message'
+               AND is_read = FALSE
+               AND related_id IN (
+                 SELECT id FROM messages WHERE senderId = ?
+               )`,
+            [userId, conversationUserId]
+          )
+        : await db.promise().query(
+            `SELECT id FROM notifications
+             WHERE user_id = ?
+               AND type = 'chat_message'
+               AND is_read = FALSE
+               AND related_id IN (
+                 SELECT id FROM messages WHERE senderId = ? AND receiverId = ?
+               )`,
+            [userId, conversationUserId, userId]
+          );
 
     const notificationIds = (notifications || []).map((row) => row.id);
     if (notificationIds.length === 0) {
@@ -127,9 +132,10 @@ class NotificationManager {
 
   static async deleteOldNotifications(daysOld = 30) {
     await this.ensureNotificationsTable();
+    const safeDaysOld = parsePositiveInt(daysOld, 30);
     const [result] = await db.promise().query(
       "DELETE FROM notifications WHERE created_at < DATE_SUB(NOW(), INTERVAL ? DAY)",
-      [daysOld]
+      [safeDaysOld]
     );
 
     return result.affectedRows;

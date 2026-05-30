@@ -78,7 +78,7 @@ const unblockUser = async (req, res) => {
 
 const deleteUser = async (req, res) => {
   try {
-    const user = await AdminUser.findRoleById(req.params.id);
+    const user = await AdminUser.findDeleteCandidateById(req.params.id);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -87,13 +87,22 @@ const deleteUser = async (req, res) => {
       return res.status(403).json({ message: "Admin accounts cannot be deleted" });
     }
 
-    const affectedRows = await AdminUser.deleteUser(req.params.id);
+    if (user.isEmailVerified === 1 || user.isEmailVerified === true) {
+      return res.status(400).json({ message: "Only unverified users can be deleted" });
+    }
+
+    if (Number(user.accountAgeHours || 0) < 48) {
+      return res.status(400).json({ message: "Unverified users can only be deleted after 48 hours" });
+    }
+
+    const affectedRows = await AdminUser.deleteStaleUnverifiedUser(req.params.id);
     if (affectedRows === 0) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.json({ message: "User deleted" });
+    res.json({ message: "Unverified user deleted" });
   } catch (err) {
+    console.error("Error deleting user:", err);
     res.status(500).json({ message: "Database error" });
   }
 };

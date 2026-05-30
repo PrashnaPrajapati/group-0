@@ -88,7 +88,9 @@ useEffect(() => {
   }, [currentPage, totalPages]);
 
   const getPackageImage = (pkg) =>
-    pkg.image ? apiUrl(`/uploads/packages/${pkg.image}`) : DEFAULT_PACKAGE_IMAGE;
+    pkg.image
+      ? apiUrl(pkg.image.startsWith("http") ? pkg.image : `/uploads/packages/${pkg.image}`)
+      : DEFAULT_PACKAGE_IMAGE;
 
   return (
     <div className={`min-h-screen bg-[#fffaf7] ${isLoggedIn ? "flex" : ""}`}>

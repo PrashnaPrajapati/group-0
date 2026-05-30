@@ -1,4 +1,5 @@
 const db = require("../db");
+const { buildSetClause } = require("../utils/sql");
 
 const parseServices = (services) => {
   if (!services) return [];
@@ -37,18 +38,29 @@ const replacePackageServices = async (packageId, serviceIds) => {
 };
 
 const updatePackage = async ({ id, name, description, price, duration, status = "active", image }) => {
-  const fields = ["name=?", "description=?", "price=?", "duration=?", "status=?"];
-  const params = [name, description || null, price, duration, status];
-
-  if (image) {
-    fields.push("image=?");
-    params.push(image);
-  }
+  const { clause, params } = buildSetClause(
+    {
+      name: "name",
+      description: "description",
+      price: "price",
+      duration: "duration",
+      status: "status",
+      image: "image",
+    },
+    {
+      name,
+      description: description || null,
+      price,
+      duration,
+      status,
+      image: image || undefined,
+    }
+  );
 
   params.push(id);
 
   const [result] = await db.promise().query(
-    `UPDATE packages SET ${fields.join(", ")} WHERE id=?`,
+    `UPDATE packages SET ${clause} WHERE id = ?`,
     params
   );
 

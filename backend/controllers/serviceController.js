@@ -42,7 +42,7 @@ const createService = async (req, res) => {
     }
 
     const nameClean = name.trim();
-    const imagePath = req.file ? `/uploads/services/${req.file.filename}` : null;
+    const imagePath = req.file?.imageUrl || null;
 
     const existingService = await Service.findByName(nameClean);
     if (existingService) {
@@ -84,7 +84,7 @@ const updateService = async (req, res) => {
   try {
     const { name, description, price, duration, gender, category } = req.body;
     const serviceId = req.params.id;
-    const imagePath = req.file ? `/uploads/services/${req.file.filename}` : null;
+    const imagePath = req.file?.imageUrl || null;
     const nameClean = name.trim();
 
     const duplicateService = await Service.findDuplicateName(nameClean, serviceId);

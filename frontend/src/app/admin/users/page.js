@@ -18,6 +18,7 @@ import {
   Search,
   ShieldAlert,
   ShieldCheck,
+  Trash2,
   Unlock,
   UserRound,
   X,
@@ -173,6 +174,45 @@ export default function AdminUsersPage() {
 
   const getIsVerified = (user) =>
     user?.isEmailVerified === 1 || user?.isEmailVerified === true;
+
+  const isStaleUnverifiedUser = (user) => {
+    if (!user || getIsVerified(user) || user.role === "admin" || !user.created_at) {
+      return false;
+    }
+
+    const createdAt = new Date(user.created_at).getTime();
+    if (Number.isNaN(createdAt)) return false;
+
+    return Date.now() - createdAt >= 48 * 60 * 60 * 1000;
+  };
+
+  const deleteUser = (user) => {
+    confirmWithToast(
+      `Delete unverified account for ${user.fullName || user.email}? This cannot be undone.`,
+      async () => {
+        try {
+          const res = await fetch(apiUrl(`/admin/users/${user.id}`), {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          if (!res.ok) {
+            const result = await res.json().catch(() => ({}));
+            throw new Error(result.message || "Failed to delete user");
+          }
+
+          toast.success("Unverified user deleted successfully");
+          setSelectedUser(null);
+          fetchUsers();
+        } catch (error) {
+          console.error(error);
+          toast.error(error.message || "Unable to delete user");
+        }
+      }
+    );
+  };
 
   const filteredUsers = users.filter((user) => {
     const isVerified = user.isEmailVerified === 1 || user.isEmailVerified === true;
@@ -369,6 +409,16 @@ export default function AdminUsersPage() {
                 {selectedUser.blocked ? <Unlock size={16} /> : <Ban size={16} />}
                 {selectedUser.blocked ? "Unblock user" : "Block user"}
               </button>
+              {isStaleUnverifiedUser(selectedUser) && (
+                <button
+                  type="button"
+                  onClick={() => deleteUser(selectedUser)}
+                  className="inline-flex items-center justify-center gap-2 rounded-md bg-red-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-800"
+                >
+                  <Trash2 size={16} />
+                  Delete user
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -512,6 +562,15 @@ export default function AdminUsersPage() {
                             {user.blocked ? <Unlock size={14} /> : <Ban size={14} />}
                             {user.blocked ? "Unblock" : "Block"}
                           </button>
+                          {isStaleUnverifiedUser(user) && (
+                            <button
+                              onClick={() => deleteUser(user)}
+                              className="inline-flex items-center gap-1 rounded-md bg-red-700 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-red-800"
+                            >
+                              <Trash2 size={14} />
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

@@ -178,8 +178,7 @@ export default function Navbar() {
     <>
     <header className="fixed top-0 left-0 right-0 flex justify-between items-center bg-gray-100 px-6 py-4 shadow-md border-b h-20 z-50">
  
-      <div className="flex items-center gap-4">
-        {/* LOGO */} 
+      <div className="flex items-center gap-4"> 
         <h1 className="flex items-center gap-2 text-2xl md:text-3xl font-bold bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
           <Sparkles size={24} className="text-pink-500" />
           <span>Singar Glow</span>

@@ -1,4 +1,5 @@
 const db = require("../db");
+const { buildSetClause } = require("../utils/sql");
 
 const serviceFields = `
   s.id,
@@ -104,25 +105,31 @@ const findAll = async () => {
 };
 
 const updateService = async (id, { name, description, price, duration, gender, category, image }) => {
-  const fields = [
-    "name=?",
-    "description=?",
-    "price=?",
-    "duration=?",
-    "gender=?",
-    "category=?",
-  ];
-  const params = [name, description, price, duration, gender, category];
-
-  if (image) {
-    fields.push("image=?");
-    params.push(image);
-  }
+  const { clause, params } = buildSetClause(
+    {
+      name: "name",
+      description: "description",
+      price: "price",
+      duration: "duration",
+      gender: "gender",
+      category: "category",
+      image: "image",
+    },
+    {
+      name,
+      description,
+      price,
+      duration,
+      gender,
+      category,
+      image: image || undefined,
+    }
+  );
 
   params.push(id);
 
   const [result] = await db.promise().query(
-    `UPDATE services SET ${fields.join(", ")} WHERE id=?`,
+    `UPDATE services SET ${clause} WHERE id = ?`,
     params
   );
 

@@ -54,15 +54,40 @@ const findRoleById = async (id) => {
   return rows[0] || null;
 };
 
-const deleteUser = async (id) => {
-  const [result] = await db.promise().query("DELETE FROM users WHERE id = ?", [id]);
+const findDeleteCandidateById = async (id) => {
+  const [rows] = await db.promise().query(
+    `SELECT
+      id,
+      role,
+      isEmailVerified,
+      created_at,
+      TIMESTAMPDIFF(HOUR, created_at, NOW()) AS accountAgeHours
+    FROM users
+    WHERE id = ?`,
+    [id]
+  );
+
+  return rows[0] || null;
+};
+
+const deleteStaleUnverifiedUser = async (id) => {
+  const [result] = await db.promise().query(
+    `DELETE FROM users
+     WHERE id = ?
+       AND role <> 'admin'
+       AND isEmailVerified = FALSE
+       AND created_at < DATE_SUB(NOW(), INTERVAL 48 HOUR)`,
+    [id]
+  );
+
   return result.affectedRows;
 };
 
 module.exports = {
   blockUser,
-  deleteUser,
+  deleteStaleUnverifiedUser,
   findAllUsers,
+  findDeleteCandidateById,
   findRoleById,
   unblockUser,
   updateRole,

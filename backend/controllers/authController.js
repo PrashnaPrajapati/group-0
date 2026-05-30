@@ -210,7 +210,7 @@ const forgotPassword = async (req, res) => {
       text: `Hello,\n\nWe received a request to reset your password for your Singar Glow account.\n\nTo reset your password, please click the link below:\n${resetLink}\n\nThis link will expire in 15 minutes. Please make sure to use it before then. If you didn't request a password reset, you can safely ignore this email.\n\nThank you,\nThe Singar Glow Team`,
     });
 
-    return res.json({ message: "Reset instructions sent" });
+    return res.json({ message: "Reset instructions sent.Please check your mail" });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Database error" });

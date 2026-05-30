@@ -3,12 +3,14 @@
 import { apiUrl } from "@/lib/apiConfig";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "react-toastify";
+import { jwtDecode } from "jwt-decode";
 import TextInput from "@/components/TextInput";
 import PasswordInput from "@/components/PasswordInput";
 import Button from "@/components/Button";
 import {Camera, Trash2, User, Mail, Phone, MapPin, Lock} from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import Navbar from "@/components/Navbar";
+import AdminSidebar from "@/components/AdminSidebar";
 import { getToken } from "@/lib/authStorage";
  
 export default function ProfilePage() {
@@ -34,13 +36,22 @@ export default function ProfilePage() {
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [loadingPassword, setLoadingPassword] = useState(false);
   const [token, setToken] = useState(null);
+  const [authRole, setAuthRole] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [showPhotoActions, setShowPhotoActions] = useState(false);
   const photoActionsRef = useRef(null);
  
   useEffect(() => {
     const storedToken = getToken();
-    if (storedToken) setToken(storedToken);
+    if (!storedToken) return;
+
+    setToken(storedToken);
+    try {
+      const decoded = jwtDecode(storedToken);
+      setAuthRole(decoded.role || "");
+    } catch {
+      setAuthRole("");
+    }
   }, []);
 
   useEffect(() => {
@@ -228,10 +239,12 @@ export default function ProfilePage() {
   };
 
   const removePhoto = async () => {
-    if (!profile.hasPhoto) return;
-    if (!window.confirm("Remove your profile photo? Your default avatar will be shown instead.")) {
+    if (!profile.hasPhoto) {
+      toast.info("No profile photo to remove.");
       return;
     }
+
+    const toastId = toast.info("Removing profile photo...", { autoClose: false });
 
     try {
       const res = await fetch(apiUrl("/profile/photo"), {
@@ -244,18 +257,70 @@ export default function ProfilePage() {
 
       setProfile({ ...profile, photoUrl: "", hasPhoto: false });
       setShowPhotoActions(false);
-      toast.success("Profile photo removed successfully!");
+      window.dispatchEvent(new Event("profileUpdated"));
+      toast.update(toastId, {
+        render: "Profile photo removed successfully!",
+        type: "success",
+        autoClose: 3000,
+      });
     } catch (err) {
-      toast.error(err.message || "Failed to remove photo");
+      toast.update(toastId, {
+        render: err.message || "Failed to remove photo",
+        type: "error",
+        autoClose: 3000,
+      });
       console.error("Photo remove error:", err);
     }
   };
 
-return (
-  <div className="flex">
+  const confirmRemovePhoto = () => {
+    if (!profile.hasPhoto) {
+      toast.info("No profile photo to remove.");
+      return;
+    }
+
+    toast(
+      ({ closeToast }) => (
+        <div className="flex flex-col gap-3">
+          <p className="font-semibold">Remove your profile photo?</p>
+          <p className="text-sm">Your default avatar will be shown instead.</p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                closeToast();
+                removePhoto();
+              }}
+              className="rounded bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600"
+            >
+              Remove
+            </button>
+            <button
+              type="button"
+              onClick={closeToast}
+              className="rounded bg-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-300"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ),
+      {
+        autoClose: false,
+        closeButton: false,
+      }
+    );
+  };
+
+const profileContent = (
+  <div className={authRole === "admin" ? "" : "flex"}>
+      {authRole !== "admin" && (
       <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
-      <div className={`flex-1 bg-gray-50 min-h-screen ${isOpen ? "md:ml-70" : "pl-16 md:pl-8"}`}>
+      )}
+      <div className={`flex-1 bg-gray-50 min-h-screen ${authRole === "admin" ? "" : isOpen ? "md:ml-70" : "pl-16 md:pl-8"}`}>
+      {authRole !== "admin" && (
       <Navbar />
+      )}
       <div className="flex flex-col min-h-screen pt-20">
   <div className="min-h-screen bg-gray-50 p-8 flex flex-col items-center space-y-6">
     <div className="text-center space-y-2">
@@ -291,7 +356,7 @@ return (
               {profile.hasPhoto && (
                 <button
                   type="button"
-                  onClick={removePhoto}
+                  onClick={confirmRemovePhoto}
                   className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-red-600 transition hover:bg-red-50"
                 >
                   <Trash2 size={16} />
@@ -421,5 +486,11 @@ return (
     </div>
   </div>
   </div>
+);
+
+return authRole === "admin" ? (
+  <AdminSidebar>{profileContent}</AdminSidebar>
+) : (
+  profileContent
 );
 }

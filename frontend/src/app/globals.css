@@ -24,6 +24,11 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 3px solid #ec4899;
+  outline-offset: 3px;
+}
  
 @layer components {
   .btn-primary {

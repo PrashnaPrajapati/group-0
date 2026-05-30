@@ -1,5 +1,5 @@
 const Booking = require("../models/bookingModel");
-const { sendBookingConfirmedEmail } = require("../emailService");
+const { sendBookingConfirmedEmail } = require("../services/emailService");
 
 const RESCHEDULE_CUTOFF_MS = 12 * 60 * 60 * 1000;
 const CANCELLATION_CHARGE_RATE = 0.15;
@@ -73,20 +73,6 @@ const createBookingController = ({
         response: emailError.response,
         message: emailError.message,
       });
-    }
-  };
-
-  const sendBookingReceivedNotification = async (booking) => {
-    try {
-      await notificationService.notifyUserBookingReceived({
-        userId: booking.user_id,
-        bookingId: booking.id,
-        itemName: booking.item_name,
-        bookingDate: formatDateForSlot(booking.booking_date),
-        bookingTime: String(booking.booking_time || "").slice(0, 5),
-      });
-    } catch (notificationError) {
-      console.error("Error sending user booking received notification:", notificationError);
     }
   };
 
@@ -168,11 +154,6 @@ const createBookingController = ({
           if (confirmationDetails) {
             await sendBookingConfirmedUpdates(confirmationDetails);
           }
-        } else {
-          const bookingDetails = await Booking.findBookingConfirmationDetails(bookingId);
-          if (bookingDetails) {
-            await sendBookingReceivedNotification(bookingDetails);
-          }
         }
 
         broadcastBookedSlot(booking_date, booking_time);
@@ -227,11 +208,6 @@ const createBookingController = ({
           if (confirmationDetails) {
             await sendBookingConfirmedUpdates(confirmationDetails);
           }
-        } else {
-          const bookingDetails = await Booking.findBookingConfirmationDetails(bookingId);
-          if (bookingDetails) {
-            await sendBookingReceivedNotification(bookingDetails);
-          }
         }
 
         broadcastBookedSlot(booking_date, booking_time);
@@ -284,15 +260,6 @@ const createBookingController = ({
             const confirmationDetails = await Booking.findBookingConfirmationDetails(bookingId);
             if (confirmationDetails) {
               await sendBookingConfirmedUpdates(confirmationDetails);
-            }
-          })
-        );
-      } else {
-        await Promise.all(
-          insertedBookingIds.map(async (bookingId) => {
-            const bookingDetails = await Booking.findBookingConfirmationDetails(bookingId);
-            if (bookingDetails) {
-              await sendBookingReceivedNotification(bookingDetails);
             }
           })
         );

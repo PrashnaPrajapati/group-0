@@ -13,7 +13,7 @@ const parseServiceIds = (value, fieldName = "service_ids") => {
 const createPackage = async (req, res) => {
   try {
     const { name, description, price, duration, status = "active", service_ids } = req.body;
-    const image = req.file ? req.file.filename : null;
+    const image = req.file?.imageUrl || null;
     const servicesArray = parseServiceIds(service_ids, "services");
 
     if (!name || !price || !servicesArray || !Array.isArray(servicesArray)) {
@@ -61,7 +61,7 @@ const updatePackage = async (req, res) => {
       price,
       duration,
       status: "active",
-      image: req.file?.filename,
+      image: req.file?.imageUrl,
     });
 
     await Package.replacePackageServices(packageId, serviceIds);

@@ -32,6 +32,7 @@ export default function PackageDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  
 
   useEffect(() => {
     setIsLoggedIn(Boolean(getValidToken()));
@@ -114,7 +115,7 @@ export default function PackageDetailsPage() {
   };
 
   const packageImage = pkg.image
-    ? apiUrl(`/uploads/packages/${pkg.image}`)
+    ? apiUrl(pkg.image.startsWith("http") ? pkg.image : `/uploads/packages/${pkg.image}`)
     : DEFAULT_PACKAGE_IMAGE;
   const reviewCount = reviews.length;
   const averageRating = reviewCount

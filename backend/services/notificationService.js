@@ -1,5 +1,5 @@
 const NotificationManager = require("./notificationManager");
-const db = require("./db");
+const db = require("../db");
 
 class NotificationService {
   constructor(io) {

@@ -1,10 +1,6 @@
 import { notify } from "./notify";
 import { clearAuthSession } from "./authStorage";
-
-/**
- * Returns { safeFetch, ensureAuth } bound to the caller's router.
- * Call once at the top of a component: const { safeFetch } = createSafeFetch(router)
- */
+ 
 export function createSafeFetch(router) {
   const ensureAuth = (status) => {
     if (status === 401 || status === 403) {
