@@ -7,23 +7,19 @@ class NotificationService {
     this.setupSocketListeners();
     this.startReminderScheduler();
   }
-
-  // Setup Socket.IO listeners for real-time notifications
+ 
   setupSocketListeners() {
     this.io.on("connection", (socket) => {
       console.log("Notification service: User connected:", socket.id);
-
-      // Register user for notifications
+ 
       socket.on("register_for_notifications", (data) => {
         try {
           const { userId, role } = data;
           socket.userId = userId;
           socket.userRole = role;
-
-          // Join user-specific room
+ 
           socket.join(`user_${userId}`);
-
-          // Join admin room if admin
+ 
           if (role === "admin") {
             socket.join("admin_room");
           }
@@ -33,8 +29,7 @@ class NotificationService {
           console.error("Error registering for notifications:", error);
         }
       });
-
-      // Mark notification as read
+ 
       socket.on("mark_notification_read", async (data) => {
         try {
           const { notificationId } = data;
@@ -43,16 +38,13 @@ class NotificationService {
           if (!userId) return;
 
           await NotificationManager.markAsRead(notificationId, userId);
-
-          // Emit updated unread count
+ 
           const unreadCount = await NotificationManager.getUnreadCount(userId);
           socket.emit("notification_count_updated", { unreadCount });
         } catch (error) {
           console.error("Error marking notification as read:", error);
         }
-      });
-
-      // Mark all notifications as read
+      }); 
       socket.on("mark_all_notifications_read", async () => {
         try {
           const userId = socket.userId;
@@ -60,8 +52,7 @@ class NotificationService {
           if (!userId) return;
 
           await NotificationManager.markAllAsRead(userId);
-
-          // Emit updated unread count
+ 
           socket.emit("notification_count_updated", { unreadCount: 0 });
         } catch (error) {
           console.error("Error marking all notifications as read:", error);
@@ -94,11 +85,9 @@ class NotificationService {
       return { affectedRows: 0, notificationIds: [] };
     }
   }
-
-  // Send notification to specific user
+ 
   async sendNotificationToUser(userId, title, message, type, relatedId = null) {
-    try {
-      // Create notification in database
+    try { 
       const notificationId = await NotificationManager.createNotification(
         userId,
         title,
@@ -106,11 +95,9 @@ class NotificationService {
         type,
         relatedId
       );
-
-      // Get unread count
+ 
       const unreadCount = await NotificationManager.getUnreadCount(userId);
-
-      // Emit to user's room
+ 
       this.io.to(`user_${userId}`).emit("new_notification", {
         id: notificationId,
         title,
@@ -127,11 +114,9 @@ class NotificationService {
       console.error("Error sending notification to user:", error);
     }
   }
-
-  // Send notification to all admins
+ 
   async sendNotificationToAdmins(title, message, type, relatedId = null) {
-    try {
-      // Get all admin users
+    try { 
       const admins = await this.getAllAdmins();
 
       for (const admin of admins) {
@@ -143,8 +128,7 @@ class NotificationService {
       console.error("Error sending notification to admins:", error);
     }
   }
-
-  // Get all admin users
+ 
   getAllAdmins() {
     return new Promise((resolve, reject) => {
       db.query(
@@ -160,8 +144,7 @@ class NotificationService {
       );
     });
   }
-
-  // Trigger notification for new booking
+ 
   async notifyNewBooking(bookingData) {
     try {
       const { userId, bookingId, serviceName, packageName, bookingDate, bookingTime } = bookingData;
@@ -175,8 +158,7 @@ class NotificationService {
       console.error("Error sending new booking notification:", error);
     }
   }
-
-  // Trigger notification for booking cancellation
+ 
   async notifyBookingCancellation(bookingData) {
     try {
       const { userId, bookingId, serviceName, packageName, bookingDate, bookingTime } = bookingData;
@@ -230,8 +212,7 @@ class NotificationService {
       console.error("Error sending booking received notification:", error);
     }
   }
-
-  // Trigger reminder notification for upcoming service
+ 
   async notifyUpcomingService(bookingData) {
     try {
       const { userId, bookingId, serviceName, packageName, bookingDate, bookingTime } = bookingData;
@@ -280,32 +261,27 @@ class NotificationService {
       console.error("Error sending missed booking notification:", error);
     }
   }
-
-  // Start scheduler to check for upcoming services
-  startReminderScheduler() {
-    // Check every hour for services happening tomorrow
+ 
+  startReminderScheduler() { 
     setInterval(async () => {
       try {
         await this.checkUpcomingServices();
       } catch (error) {
         console.error("Error in reminder scheduler:", error);
       }
-    }, 60 * 60 * 1000); // 1 hour
-
-    // Also check immediately on startup
+    }, 60 * 60 * 1000);
+ 
     setTimeout(() => {
       this.checkUpcomingServices();
     }, 5000);
   }
-
-  // Check for services happening tomorrow and send reminders
+ 
   async checkUpcomingServices() {
     try {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       const tomorrowStr = tomorrow.toISOString().split('T')[0];
-
-      // Get all upcoming bookings for tomorrow
+ 
       const bookings = await this.getUpcomingBookingsForDate(tomorrowStr);
 
       let sentCount = 0;
@@ -328,8 +304,7 @@ class NotificationService {
       console.error("Error checking upcoming services:", error);
     }
   }
-
-  // Get upcoming bookings for a specific date
+ 
   getUpcomingBookingsForDate(date) {
     return new Promise((resolve, reject) => {
       db.query(
